@@ -47,7 +47,7 @@ import org.jgroups.util.Util;
  * seperated by a '/' e.g. 127.0.0.1/1010*127.0.0.1/4567</li>
  * <li>fixed_members_seperator (required) = The seperator used between IP addresses - e.g. *</li>
  * </ul>
- * 
+ *
  * @author Chris Mills (millsy@jboss.com)
  */
 public class FixedMembershipToken extends AuthToken {
@@ -121,7 +121,7 @@ public class FixedMembershipToken extends AuthToken {
 
     /**
      * Required to serialize the object to pass across the wire
-     * 
+     *
      * @param out
      * @throws java.io.IOException
      */
@@ -134,7 +134,7 @@ public class FixedMembershipToken extends AuthToken {
 
     /**
      * Required to deserialize the object when read in from the wire
-     * 
+     *
      * @param in
      * @throws IOException
      * @throws IllegalAccessException

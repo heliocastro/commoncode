@@ -24,6 +24,7 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
 
 import re
 
@@ -132,7 +133,7 @@ def _get_custom_interpreter(implementation=None, version=None):
         implementation = interpreter_name()
     if version is None:
         version = interpreter_version()
-    return "{}{}".format(implementation, version)
+    return f"{implementation}{version}"
 
 
 def get_supported(
@@ -171,7 +172,7 @@ def get_supported(
                 python_version=python_version,
                 abis=abis,
                 platforms=platforms,
-            )
+            ),
         )
     else:
         supported.extend(
@@ -179,14 +180,14 @@ def get_supported(
                 interpreter=interpreter,
                 abis=abis,
                 platforms=platforms,
-            )
+            ),
         )
     supported.extend(
         compatible_tags(
             python_version=python_version,
             interpreter=interpreter,
             platforms=platforms,
-        )
+        ),
     )
 
     return supported

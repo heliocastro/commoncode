@@ -5,32 +5,29 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
-import getpass
-import os
 import sys
+from pathlib import Path
 
 
-def os_arch():
+def os_arch() -> tuple[str, str]:
     """
     Return a tuple for the current the OS and architecture.
     """
-    if sys.maxsize > 2 ** 32:
-        arch = '64'
-    else:
-        arch = '32'
+    arch = "64" if sys.maxsize > 2**32 else "32"
 
     sys_platform = str(sys.platform).lower()
-    if sys_platform.startswith('linux'):
-        os = 'linux'
-    elif 'win32' in sys_platform:
-        os = 'win'
-    elif 'darwin' in sys_platform:
-        os = 'mac'
-    elif 'freebsd' in sys_platform:
-        os = 'freebsd'
+    if sys_platform.startswith("linux"):
+        os = "linux"
+    elif "win32" in sys_platform:
+        os = "win"
+    elif "darwin" in sys_platform:
+        os = "mac"
+    elif "freebsd" in sys_platform:
+        os = "freebsd"
     else:
-        raise Exception('Unsupported OS/platform %r' % sys_platform)
+        raise Exception("Unsupported OS/platform %r" % sys_platform)
     return os, arch
 
 
@@ -38,32 +35,31 @@ def os_arch():
 # OS/Arch
 #
 current_os, current_arch = os_arch()
-on_windows = current_os == 'win'
-on_windows_32 = on_windows and current_arch == '32'
-on_windows_64 = on_windows and current_arch == '64'
-on_mac = current_os == 'mac'
-on_linux = current_os == 'linux'
-on_freebsd = current_os == 'freebsd'
+on_windows = current_os == "win"
+on_windows_32 = on_windows and current_arch == "32"
+on_windows_64 = on_windows and current_arch == "64"
+on_mac = current_os == "mac"
+on_linux = current_os == "linux"
+on_freebsd = current_os == "freebsd"
 on_posix = not on_windows and (on_mac or on_linux or on_freebsd)
 
-current_os_arch = '%(current_os)s-%(current_arch)s' % locals()
-noarch = 'noarch'
-current_os_noarch = '%(current_os)s-%(noarch)s' % locals()
+current_os_arch = "{current_os}-{current_arch}".format(**locals())
+noarch = "noarch"
+current_os_noarch = "{current_os}-{noarch}".format(**locals())
 
 del os_arch
 
 
-def is_on_macos_14_or_higher():
+def is_on_macos_14_or_higher() -> bool:
     """
     Return True if the current OS is macOS 14 or higher.
     It uses APFS by default and has a different behavior wrt. unicode and
     filesystem encodings.
     """
     import platform
-    macos_ver = platform.mac_ver()
-    macos_ver = macos_ver[0]
-    macos_ver = macos_ver.split('.')
-    return macos_ver > ['10', '14']
+
+    macos_ver = platform.mac_ver()[0].split(".")
+    return macos_ver > ["10", "14"]
 
 
 on_macos_14_or_higher = is_on_macos_14_or_higher()
@@ -71,7 +67,7 @@ on_macos_14_or_higher = is_on_macos_14_or_higher()
 del is_on_macos_14_or_higher
 
 
-def has_case_sensitive_fs():
+def has_case_sensitive_fs() -> bool:
     """
     Return True if the current FS is case sensitive.
 
@@ -86,7 +82,7 @@ def has_case_sensitive_fs():
         like HFS+, is case-sensitive on iOS and is available in case-sensitive and
         case-insensitive variants on macOS, with case-insensitive being the default.
     """
-    return not os.path.exists(__file__.upper())
+    return not Path(__file__.upper()).exists()
 
 
 is_case_sensitive_fs = has_case_sensitive_fs()
@@ -95,11 +91,11 @@ is_case_sensitive_fs = has_case_sensitive_fs()
 # Shared library file extensions
 #
 if on_windows:
-    lib_ext = '.dll'
+    lib_ext = ".dll"
 if on_mac:
-    lib_ext = '.dylib'
+    lib_ext = ".dylib"
 if on_linux or on_freebsd:
-    lib_ext = '.so'
+    lib_ext = ".so"
 
 #
 # Python versions
@@ -126,5 +122,6 @@ py310 = py3 and _sys_v1 == 10
 # The system does not display the Windows Error Reporting dialog.
 if on_windows:
     import ctypes
+
     # 3 is SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX
-    ctypes.windll.kernel32.SetErrorMode(3)  # @UndefinedVariable
+    ctypes.windll.kernel32.SetErrorMode(3)  # type: ignore

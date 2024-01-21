@@ -27,25 +27,25 @@ package org.jgroups.util;
  * <code>null</code>).
  *
  * @author Brian Stansberry
- * 
+ *
  * @version $Id: ImmutableReference.java,v 1.1 2010/06/19 02:24:46 bstansberry Exp $
  */
 public class ImmutableReference<T> {
 
     private final T referent;
-    
-    /** 
+
+    /**
      * Create a new ImmutableReference.
-     * 
+     *
      * @param referent the object to refer to, or <code>null</code>
      */
     public ImmutableReference(T referent) {
         this.referent = referent;
     }
-    
+
     /**
      * Gets the wrapped object, if there is one.
-     * 
+     *
      * @return the object passed to the constructor, or <code>null</code> if
      *         <code>null</code> was passed to the constructor
      */

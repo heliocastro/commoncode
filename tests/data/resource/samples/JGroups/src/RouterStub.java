@@ -52,7 +52,7 @@ public class RouterStub {
     // forever, or until the sock is closed)
 
     private boolean tcp_nodelay=true;
-    
+
     private StubReceiver receiver;
 
     public interface ConnectionListener {
@@ -69,13 +69,13 @@ public class RouterStub {
         router_host=routerHost != null? routerHost : "localhost";
         router_port=routerPort;
         bind_addr=bindAddress;
-        conn_listener=l;        
+        conn_listener=l;
     }
-    
+
     public synchronized void setReceiver(StubReceiver receiver) {
         this.receiver = receiver;
     }
-    
+
     public synchronized StubReceiver  getReceiver() {
         return receiver;
     }
@@ -95,7 +95,7 @@ public class RouterStub {
                 thread.interrupt();
         }
     }
-    
+
     public synchronized void join(long wait) throws InterruptedException {
         if(receiver != null) {
             Thread thread = receiver.getThread();
@@ -141,7 +141,7 @@ public class RouterStub {
         output.flush();
         byte result = input.readByte();
         if(result == GossipRouter.CONNECT_OK) {
-            connectionStateChanged(ConnectionStatus.CONNECTED);   
+            connectionStateChanged(ConnectionStatus.CONNECTED);
         } else {
             connectionStateChanged(ConnectionStatus.DISCONNECTED);
             throw new Exception("Connect failed received from GR " + getGossipRouterAddress());
@@ -159,10 +159,10 @@ public class RouterStub {
                 sock.setKeepAlive(true);
                 Util.connect(sock, new InetSocketAddress(router_host, router_port), sock_conn_timeout);
                 output=new DataOutputStream(sock.getOutputStream());
-                input=new DataInputStream(sock.getInputStream());                
+                input=new DataInputStream(sock.getInputStream());
                 connectionStateChanged(ConnectionStatus.CONNECTION_ESTABLISHED);
             }
-            catch(Exception e) {                
+            catch(Exception e) {
                 Util.close(sock);
                 Util.close(input);
                 Util.close(output);
@@ -212,11 +212,11 @@ public class RouterStub {
             Util.close(sock);
         }
     }
-    
-    
+
+
     /*
      * Used only in testing, never access socket directly
-     * 
+     *
      */
     public Socket getSocket() {
         return sock;
@@ -242,8 +242,8 @@ public class RouterStub {
                 rsp.readFrom(input);
                 retval.add(rsp);
             }
-        }       
-        catch(Exception e) {           
+        }
+        catch(Exception e) {
             connectionStateChanged(ConnectionStatus.CONNECTION_BROKEN);
             throw new Exception("Connection to " + getGossipRouterAddress() + " broken. Could not send GOSSIP_GET request", e);
         }
@@ -253,7 +253,7 @@ public class RouterStub {
     public InetSocketAddress getGossipRouterAddress() {
         return new InetSocketAddress(router_host, router_port);
     }
-    
+
     public String toString() {
         return "RouterStub[localsocket=" + ((sock != null) ? sock.getLocalSocketAddress().toString()
                         : "null")+ ",router_host=" + router_host + "::" + router_port

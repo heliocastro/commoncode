@@ -52,7 +52,7 @@ public class S3_PING extends FILE_PING {
     protected AWSAuthConnection conn=null;
 
 
-  
+
     public void init() throws Exception {
         super.init();
         if(access_key == null || secret_access_key == null)
@@ -169,7 +169,7 @@ public class S3_PING extends FILE_PING {
 
 
 
-    
+
 
 
     /**
@@ -3018,8 +3018,3 @@ public class S3_PING extends FILE_PING {
     }   // end class Base64
 
 }
-
-
-
-
-

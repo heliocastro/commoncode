@@ -5,41 +5,44 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 import errno
-import os
 import ntpath
+import os
 import posixpath
 import shutil
 import stat
 import sys
 import tempfile
-
-from os import fsdecode
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
 
 try:
-    from scancode_config import scancode_temp_dir as _base_temp_dir
+    from scancode_config import scancode_temp_dir  # type: ignore
 except ImportError:
-    _base_temp_dir = None
+    scancode_temp_dir = None
 
 from commoncode import filetype
-from commoncode.filetype import is_rwx
 
 # this exception is not available on posix
 try:
-    WindowsError  # NOQA
+    WindowsError  # type: ignore
 except NameError:
 
     class WindowsError(Exception):
-        pass
+        winerror: int
+
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 TRACE = False
 
 
-def logger_debug(*args):
+def logger_debug(*args: Any) -> None:
     pass
 
 
@@ -47,8 +50,9 @@ if TRACE:
     logging.basicConfig(stream=sys.stdout)
     logger.setLevel(logging.DEBUG)
 
-    def logger_debug(*args):
-        return logger.debug(' '.join(isinstance(a, str) and a or repr(a) for a in args))
+    def logger_debug(*args: Any) -> None:
+        logger.debug(" ".join(isinstance(a, str) and a or repr(a) for a in args))
+
 
 """
 File, paths and directory utility functions.
@@ -59,44 +63,56 @@ File, paths and directory utility functions.
 #
 
 
-def create_dir(location):
+def chmod_recursive(path: Path, mode: int) -> None:
+    for child in path.iterdir():
+        if child.is_file():
+            child.chmod(mode)
+        else:  # if the child is a directory
+            chmod_recursive(child, mode)
+    path.chmod(mode)  # change the directory's permissions after changing its contents
+
+
+# usage
+chmod_recursive(Path("/path/to/directory"), 0o755)
+
+
+def create_dir(location: Path) -> None:
     """
     Create directory and all sub-directories recursively at location ensuring these
     are readable and writeable.
     Raise Exceptions if it fails to create the directory.
     """
 
-    if os.path.exists(location):
-        if not os.path.isdir(location):
-            err = ('Cannot create directory: existing file '
-                   'in the way ''%(location)s.')
+    if location.exists():
+        if not location.is_dir():
+            err = f"Cannot create directory: existing file in the way {location.as_posix()}s."
             raise OSError(err % locals())
     else:
         # may fail on win if the path is too long
         # FIXME: consider using UNC ?\\ paths
 
         try:
-            os.makedirs(location)
-            chmod(location, RW, recurse=False)
+            location.mkdir(parents=True)
+            chmod_recursive(location, RW)
 
         # avoid multi-process TOCTOU conditions when creating dirs
         # the directory may have been created since the exist check
         except WindowsError as e:
             # [Error 183] Cannot create a file when that file already exists
             if e and e.winerror == 183:
-                if not os.path.isdir(location):
+                if not location.is_dir():
                     raise
             else:
                 raise
-        except (IOError, OSError) as o:
+        except OSError as o:
             if o.errno == errno.EEXIST:
-                if not os.path.isdir(location):
+                if not location.is_dir():
                     raise
             else:
                 raise
 
 
-def get_temp_dir(base_dir=_base_temp_dir, prefix=''):
+def get_temp_dir(base_dir: Path | None = None, prefix: str | None = None) -> Path:
     """
     Return the path to a new existing unique temporary directory, created under
     the `base_dir` base directory using the `prefix` prefix.
@@ -106,19 +122,25 @@ def get_temp_dir(base_dir=_base_temp_dir, prefix=''):
     WARNING: do not change this code without changing scancode_config.py too
     """
 
+    if scancode_temp_dir:
+        base_dir = Path(scancode_temp_dir)
+
     has_base = bool(base_dir)
     if not has_base:
-        base_dir = os.getenv('SCANCODE_TMP')
-        if not base_dir:
-            base_dir = tempfile.gettempdir()
+        scancode_tmp = os.getenv("SCANCODE_TMP")
+        if scancode_tmp:  # noqa: SIM108
+            base_dir = Path(scancode_tmp)
+        else:
+            base_dir = Path(tempfile.gettempdir())
 
-    if not os.path.exists(base_dir):
-        create_dir(base_dir)
+    if base_dir:
+        Path(base_dir).mkdir(parents=True)
 
-    if not has_base:
-        prefix = 'scancode-tk-'
+        if not has_base:
+            prefix = "scancode-tk-"
 
-    return tempfile.mkdtemp(prefix=prefix, dir=base_dir)
+    return Path(tempfile.mkdtemp(prefix=prefix, dir=base_dir))
+
 
 #
 # PATHS AND NAMES MANIPULATIONS
@@ -127,17 +149,7 @@ def get_temp_dir(base_dir=_base_temp_dir, prefix=''):
 # TODO: move these functions to paths.py
 
 
-def prepare_path(pth):
-    """
-    Return the `pth` path string either as encoded bytes if on Linux and using
-    Python 2 or as a unicode/text otherwise.
-    """
-    if not isinstance(pth, str):
-        return fsdecode(pth)
-    return pth
-
-
-def is_posixpath(location):
+def is_posixpath(location: Path) -> bool:
     """
     Return True if the `location` path is likely a POSIX-like path using POSIX path
     separators (slash or "/")or has no path separator.
@@ -145,161 +157,28 @@ def is_posixpath(location):
     Return False if the `location` path is likely a Windows-like path using backslash
     as path separators (e.g. "\").
     """
-    has_slashes = '/' in location
-    has_backslashes = '\\' in location
-    # windows paths with drive
-    if location:
-        drive, _ = ntpath.splitdrive(location)
-        if drive:
-            return False
-
-    # a path is always POSIX unless it contains ONLY backslahes
-    # which is a rough approximation (it could still be posix)
-    is_posix = True
-    if has_backslashes and not has_slashes:
-        is_posix = False
-    return is_posix
+    return str(location) == location.as_posix()
 
 
-def as_posixpath(location):
-    """
-    Return a POSIX-like path using POSIX path separators (slash or "/") for a
-    `location` path. This converts Windows paths to look like POSIX paths: Python
-    accepts gracefully POSIX paths on Windows.
-    """
-    location = prepare_path(location)
-    return location.replace('\\', '/')
-
-
-def as_winpath(location):
-    """
-    Return a Windows-like path using Windows path separators (backslash or "\") for a
-    `location` path.
-    """
-    location = prepare_path(location)
-    return location.replace('/', '\\')
-
-
-def split_parent_resource(path, force_posix=False):
+def split_parent_resource(path: Path, force_posix: bool = False) -> tuple[str, str]:
     """
     Return a tuple of (parent directory path, resource name).
     """
     use_posix = force_posix or is_posixpath(path)
     splitter = use_posix and posixpath or ntpath
-    path_no_trailing_speps = path.rstrip('\\/')
-    return splitter.split(path_no_trailing_speps)
+    return splitter.split(path.as_posix())
 
-
-def resource_name(path, force_posix=False):
-    """
-    Return the resource name (file name or directory name) from `path` which
-    is the last path segment.
-    """
-    _left, right = split_parent_resource(path, force_posix)
-    return right or ''
-
-
-def file_name(path, force_posix=False):
-    """
-    Return the file name (or directory name) of a path.
-    """
-    return resource_name(path, force_posix)
-
-
-def parent_directory(path, force_posix=False, with_trail=True):
-    """
-    Return the parent directory path of a file or directory `path`.
-    The returned directory has a trailing path separator unless with_trail is False.
-    """
-    left, _right = split_parent_resource(path, force_posix)
-    use_posix = force_posix or is_posixpath(path)
-    sep = '/' if use_posix else '\\'
-    trail = sep if with_trail and left != sep else ''
-    return left + trail
-
-
-def file_base_name(path, force_posix=False):
-    """
-    Return the file base name for a path. The base name is the base name of
-    the file minus the extension. For a directory return an empty string.
-    """
-    return splitext(path, force_posix)[0]
-
-
-def file_extension(path, force_posix=False):
-    """
-    Return the file extension for a path.
-    """
-    return splitext(path, force_posix)[1]
-
-
-def splitext_name(file_name, is_file=True):
-    """
-    Return a tuple of Unicode strings (basename, extension) for a file name. The
-    basename is the file name minus its extension. Return an empty extension
-    string for a directory. Not the same as os.path.splitext_name.
-    """
-
-    if not file_name:
-        return '', ''
-    file_name = fsdecode(file_name)
-
-    if not is_file:
-        return file_name, ''
-
-    if file_name.startswith('.') and '.' not in file_name[1:]:
-        # .dot files base name is the full name and they do not have an extension
-        return file_name, ''
-
-    base_name, extension = posixpath.splitext(file_name)
-    # handle composed extensions of tar.gz, bz, zx,etc
-    if base_name.endswith('.tar'):
-        base_name, extension2 = posixpath.splitext(base_name)
-        extension = extension2 + extension
-    return base_name, extension
-
-
-# TODO: FIXME: this is badly broken!!!!
-def splitext(path, force_posix=False):
-    """
-    Return a tuple of strings (basename, extension) for a path. The basename is
-    the file name minus its extension. Return an empty extension string for a
-    directory.
-    """
-    base_name = ''
-    extension = ''
-    if not path:
-        return base_name, extension
-
-    is_dir = path.endswith(('\\', '/',))
-    path = as_posixpath(path).strip('/')
-    name = resource_name(path, force_posix)
-    if is_dir:
-        # directories never have an extension
-        base_name = name
-        extension = ''
-    elif name.startswith('.') and '.' not in name[1:]:
-        # .dot files base name is the full name and they do not have an extension
-        base_name = name
-        extension = ''
-    else:
-        base_name, extension = posixpath.splitext(name)
-        # handle composed extensions of tar.gz, tar.bz2, zx,etc
-        if base_name.endswith('.tar'):
-            base_name, extension2 = posixpath.splitext(base_name)
-            extension = extension2 + extension
-    return base_name, extension
 
 #
 # DIRECTORY AND FILES WALKING/ITERATION
 #
 
 
-def ignore_nothing(_):
+def ignore_nothing(_: Any) -> bool:
     return False
 
 
-def walk(location, ignored=None, follow_symlinks=False):
+def walk(location: Path, ignored: Any | None = None, follow_symlinks: bool = False) -> Any:
     """
     Walk location returning the same tuples as os.walk but with a different
     behavior:
@@ -318,41 +197,41 @@ def walk(location, ignored=None, follow_symlinks=False):
     is_ignored = ignored(location) if ignored else False
     if is_ignored:
         if TRACE:
-            logger_debug('walk: ignored:', location, is_ignored)
+            logger_debug("walk: ignored:", location.as_posix(), is_ignored)
         return
 
-    if filetype.is_file(location, follow_symlinks=follow_symlinks) :
-        yield parent_directory(location), [], [file_name(location)]
+    if filetype.is_file(location, follow_symlinks=follow_symlinks):
+        yield location.parent, [], [location.name]
 
-    elif filetype.is_dir(location, follow_symlinks=follow_symlinks):
+    elif location.is_dir():
         dirs = []
         files = []
-        # TODO: consider using scandir
-        for name in os.listdir(location):
-            loc = os.path.join(location, name)
+        for loc in location.iterdir():
             if filetype.is_special(loc) or (ignored and ignored(loc)):
-                if (follow_symlinks
-                        and filetype.is_link(loc)
-                        and not filetype.is_broken_link(location)):
+                if follow_symlinks and loc.is_symlink() and not location.exists():
                     pass
                 else:
                     if TRACE:
                         ign = ignored and ignored(loc)
-                        logger_debug('walk: ignored:', loc, ign)
+                        logger_debug("walk: ignored:", loc, ign)
                     continue
             # special files and symlinks are always ignored
             if filetype.is_dir(loc, follow_symlinks=follow_symlinks):
-                dirs.append(name)
+                dirs.append(loc.name)
             elif filetype.is_file(loc, follow_symlinks=follow_symlinks):
-                files.append(name)
+                files.append(loc.name)
         yield location, dirs, files
 
         for dr in dirs:
-            for tripple in walk(os.path.join(location, dr), ignored, follow_symlinks=follow_symlinks):
-                yield tripple
+            yield from walk(Path(location / dr), ignored, follow_symlinks=follow_symlinks)
 
 
-def resource_iter(location, ignored=ignore_nothing, with_dirs=True, follow_symlinks=False):
+def resource_iter(
+    location: Path,
+    ignored: Any | bool = ignore_nothing,
+    with_dirs: bool = True,
+    follow_symlinks: bool = False,
+) -> Path:
     """
     Return an iterable of paths at `location` recursively.
 
@@ -364,15 +243,17 @@ def resource_iter(location, ignored=ignore_nothing, with_dirs=True, follow_symli
     for top, dirs, files in walk(location, ignored, follow_symlinks=follow_symlinks):
         if with_dirs:
             for d in dirs:
-                yield os.path.join(top, d)
+                yield Path(top / d)
         for f in files:
-            yield os.path.join(top, f)
+            yield Path(top / f)
+
+
 #
 # COPY
 #
 
 
-def copytree(src, dst):
+def copytree(src: Path, dst: Path) -> None:
     """
     Copy recursively the `src` directory to the `dst` directory. If `dst` is an
     existing directory, files in `dst` may be overwritten during the copy.
@@ -386,44 +267,42 @@ def copytree(src, dst):
     This function is similar to and derived from the Python shutil.copytree
     function. See fileutils.py.ABOUT for details.
     """
+
     if not filetype.is_readable(src):
-        chmod(src, R, recurse=False)
+        src.chmod(mode=R)
 
-    names = os.listdir(src)
-
-    if not os.path.exists(dst):
-        os.makedirs(dst)
+    if not dst.exists():
+        dst.mkdir(parents=True, exist_ok=False)
 
     errors = []
     errors.extend(copytime(src, dst))
 
-    for name in names:
-        srcname = os.path.join(src, name)
-        dstname = os.path.join(dst, name)
+    for srcname in src.iterdir():
+        dstname: Path = dst / srcname.name
 
         # skip anything that is not a regular file, dir or link
-        if not filetype.is_regular(srcname):
+        if not filetype.is_regular(srcname.as_posix()):
             continue
 
-        if not filetype.is_readable(srcname):
-            chmod(srcname, R, recurse=False)
+        if not filetype.is_readable(srcname.as_posix()):
+            srcname.chmod(R)
         try:
-            if os.path.isdir(srcname):
+            if srcname.is_dir():
                 copytree(srcname, dstname)
-            elif filetype.is_file(srcname):
+            elif srcname.is_file():
                 copyfile(srcname, dstname)
         # catch the Error from the recursive copytree so that we can
         # continue with other files
         except shutil.Error as err:
             errors.extend(err.args[0])
-        except EnvironmentError as why:
-            errors.append((srcname, dstname, str(why)))
+        except OSError as why:
+            errors.append((srcname.as_posix(), dstname.as_posix(), str(why)))
 
     if errors:
         raise shutil.Error(errors)
 
 
-def copyfile(src, dst):
+def copyfile(src: Path, dst: Path) -> None:
     """
     Copy src file to dst file preserving timestamps.
     Ignore permissions and special files.
@@ -434,14 +313,14 @@ def copyfile(src, dst):
     if not filetype.is_regular(src):
         return
     if not filetype.is_readable(src):
-        chmod(src, R, recurse=False)
-    if os.path.isdir(dst):
-        dst = os.path.join(dst, os.path.basename(src))
+        src.chmod(R)
+    if dst.is_dir():
+        dst = dst / src.name
     shutil.copyfile(src, dst)
     copytime(src, dst)
 
 
-def copytime(src, dst):
+def copytime(src: Path, dst: Path) -> list[tuple[str, str, str]]:
     """
     Copy timestamps from `src` to `dst`.
 
@@ -449,8 +328,8 @@ def copytime(src, dst):
     for details.
     """
     errors = []
-    st = os.stat(src)
-    if hasattr(os, 'utime'):
+    st = src.stat()
+    if hasattr(os, "utime"):
         try:
             os.utime(dst, (st.st_atime, st.st_mtime))
         except OSError as why:
@@ -458,8 +337,9 @@ def copytime(src, dst):
                 # File access times cannot be copied on Windows
                 pass
             else:
-                errors.append((src, dst, str(why)))
+                errors.append((src.as_posix(), dst.as_posix(), str(why)))
     return errors
+
 
 #
 # PERMISSIONS
@@ -472,94 +352,33 @@ RW = stat.S_IRUSR | stat.S_IWUSR
 RX = stat.S_IRUSR | stat.S_IXUSR
 RWX = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
 
-
-# FIXME: This was an expensive operation that used to recurse of the parent directory
-def chmod(location, flags, recurse=False):
-    """
-    Update permissions for `location` with with `flags`. `flags` is one of R,
-    RW, RX or RWX with the same semantics as in the chmod command. Update is
-    done recursively if `recurse`.
-    """
-    if not location or not os.path.exists(location):
-        return
-    location = os.path.abspath(location)
-
-    new_flags = flags
-    if filetype.is_dir(location):
-        # POSIX dirs need to be executable to be readable,
-        # and to be writable so we can change perms of files inside
-        new_flags = RWX
-
-    # FIXME: do we really need to change the parent directory perms?
-    # FIXME: may just check them instead?
-    parent = os.path.dirname(location)
-    current_stat = stat.S_IMODE(os.stat(parent).st_mode)
-    if not is_rwx(parent):
-        os.chmod(parent, current_stat | RWX)
-
-    if filetype.is_regular(location):
-        current_stat = stat.S_IMODE(os.stat(location).st_mode)
-        os.chmod(location, current_stat | new_flags)
-
-    if recurse:
-        chmod_tree(location, flags)
-
-
-def chmod_tree(location, flags):
-    """
-    Update permissions recursively in a directory tree `location`.
-    """
-    if filetype.is_dir(location):
-        for top, dirs, files in walk(location):
-            for d in dirs:
-                chmod(os.path.join(top, d), flags, recurse=False)
-            for f in files:
-                chmod(os.path.join(top, f), flags, recurse=False)
-
 #
 # DELETION
-#
 
 
-def _rm_handler(function, path, excinfo):  # NOQA
+def _rm_handler(function: Callable[..., Any], path: str, excinfo: Any) -> None:
     """
     shutil.rmtree handler invoked on error when deleting a directory tree.
     This retries deleting once before giving up.
     """
     if TRACE:
-        logger_debug('_rm_handler:', 'path:', path, 'excinfo:', excinfo)
+        logger_debug("_rm_handler:", "path:", path, "excinfo:", excinfo)
+
+    _path: Path = Path(path)
     if function in (os.rmdir, os.listdir):
         try:
-            chmod(path, RW, recurse=True)
+            _path.chmod(RW)
             shutil.rmtree(path, True)
         except Exception:
-            pass
+            logger.warning("Failed to delete directory %s", path)
 
-        if os.path.exists(path):
-            logger.warning('Failed to delete directory %s', path)
-
+        if _path.exists():
+            logger.warning("Failed to delete directory %s", path)
     elif function == os.remove:
         try:
-            delete(path, _err_handler=None)
-        except:
-            pass
+            _path.unlink()
+        except Exception:
+            logger.warning("Failed to delete directory %s", path)
 
-        if os.path.exists(path):
-            logger.warning('Failed to delete file %s', path)
-
-
-def delete(location, _err_handler=_rm_handler):
-    """
-    Delete a directory or file at `location` recursively. Similar to "rm -rf"
-    in a shell or a combo of os.remove and shutil.rmtree.
-    This function is design to never fails: instead it logs warnings if the
-    file or directory was not deleted correctly.
-    """
-    if not location:
-        return
-
-    if os.path.exists(location) or filetype.is_broken_link(location):
-        if filetype.is_dir(location):
-            shutil.rmtree(location, False, _rm_handler)
-        else:
-            os.remove(location)
+        if _path.exists():
+            logger.warning("Failed to delete file %s", path)

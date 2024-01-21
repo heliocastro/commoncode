@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #
 # Copyright (c) nexB Inc. and others. All rights reserved.
 # ScanCode is a trademark of nexB Inc.
@@ -8,16 +7,15 @@
 # See https://github.com/nexB/skeleton for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 import itertools
-import os
 import sys
 from collections import defaultdict
 
 import click
-
-import utils_thirdparty
 import utils_requirements
+import utils_thirdparty
 
 TRACE = False
 TRACE_DEEP = False
@@ -59,8 +57,7 @@ TRACE_DEEP = False
     metavar="DIR",
     default=utils_thirdparty.THIRDPARTY_DIR,
     show_default=True,
-    help="Path to the detsination directory where to save downloaded wheels, "
-    "sources, ABOUT and LICENSE files..",
+    help="Path to the detsination directory where to save downloaded wheels, " "sources, ABOUT and LICENSE files..",
 )
 @click.option(
     "-w",
@@ -120,7 +117,7 @@ TRACE_DEEP = False
     show_default=False,
     multiple=True,
     help="Package name(s) that come only in sdist format (no wheels). "
-         "The command will not fail and exit if no wheel exists for these names",
+    "The command will not fail and exit if no wheel exists for these names",
 )
 @click.option(
     "--wheel-only",
@@ -131,7 +128,7 @@ TRACE_DEEP = False
     show_default=False,
     multiple=True,
     help="Package name(s) that come only in wheel format (no sdist). "
-         "The command will not fail and exit if no sdist exists for these names",
+    "The command will not fail and exit if no sdist exists for these names",
 )
 @click.option(
     "--no-dist",
@@ -142,7 +139,7 @@ TRACE_DEEP = False
     show_default=False,
     multiple=True,
     help="Package name(s) that do not come either in wheel or sdist format. "
-         "The command will not fail and exit if no distribution exists for these names",
+    "The command will not fail and exit if no distribution exists for these names",
 )
 @click.help_option("-h", "--help")
 def fetch_thirdparty(
@@ -187,8 +184,7 @@ def fetch_thirdparty(
     print(f"COLLECTING REQUIRED NAMES & VERSIONS FROM {dest_dir}")
 
     existing_packages_by_nv = {
-        (package.name, package.version): package
-        for package in utils_thirdparty.get_local_packages(directory=dest_dir)
+        (package.name, package.version): package for package in utils_thirdparty.get_local_packages(directory=dest_dir)
     }
 
     required_name_versions = set(existing_packages_by_nv.keys())
@@ -248,7 +244,6 @@ def fetch_thirdparty(
         print(f"Processing: {name} @ {version}")
         if wheels:
             for environment in environments:
-
                 if TRACE:
                     print(f"  ==> Fetching wheel for envt: {environment}")
 
@@ -262,11 +257,9 @@ def fetch_thirdparty(
                 if not fetched:
                     wheels_or_sdist_not_found[f"{name}=={version}"].append(environment)
                     if TRACE:
-                        print(f"      NOT FOUND")
+                        print("      NOT FOUND")
 
-        if (sdists or
-            (f"{name}=={version}" in wheels_or_sdist_not_found and name in sdist_only)
-         ):
+        if sdists or (f"{name}=={version}" in wheels_or_sdist_not_found and name in sdist_only):
             if TRACE:
                 print(f"  ==> Fetching sdist: {name}=={version}")
 
@@ -279,17 +272,17 @@ def fetch_thirdparty(
             if not fetched:
                 wheels_or_sdist_not_found[f"{name}=={version}"].append("sdist")
                 if TRACE:
-                    print(f"      NOT FOUND")
+                    print("      NOT FOUND")
 
     mia = []
     for nv, dists in wheels_or_sdist_not_found.items():
         name, _, version = nv.partition("==")
         if name in no_dist:
             continue
-        sdist_missing = sdists and "sdist" in dists and not name in wheel_only
+        sdist_missing = sdists and "sdist" in dists and name not in wheel_only
         if sdist_missing:
             mia.append(f"SDist missing: {nv} {dists}")
-        wheels_missing = wheels and any(d for d in dists if d != "sdist") and not name in sdist_only
+        wheels_missing = wheels and any(d for d in dists if d != "sdist") and name not in sdist_only
         if wheels_missing:
             mia.append(f"Wheels missing: {nv} {dists}")
 
@@ -298,12 +291,12 @@ def fetch_thirdparty(
             print(m)
         raise Exception(mia)
 
-    print(f"==> FETCHING OR CREATING ABOUT AND LICENSE FILES")
+    print("==> FETCHING OR CREATING ABOUT AND LICENSE FILES")
     utils_thirdparty.fetch_abouts_and_licenses(dest_dir=dest_dir, use_cached_index=use_cached_index)
     utils_thirdparty.clean_about_files(dest_dir=dest_dir)
 
     # check for problems
-    print(f"==> CHECK FOR PROBLEMS")
+    print("==> CHECK FOR PROBLEMS")
     utils_thirdparty.find_problems(
         dest_dir=dest_dir,
         report_missing_sources=sdists,

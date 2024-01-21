@@ -5,18 +5,17 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 import ntpath
 import posixpath
 import re
-
 from os.path import commonprefix
+from pathlib import Path
+from typing import Any
 
-from commoncode.text import as_unicode
-from commoncode.text import toascii
-from commoncode.fileutils import as_posixpath
-from commoncode.fileutils import as_winpath
 from commoncode.fileutils import is_posixpath
+from commoncode.text import toascii
 
 """
 Various path utilities such as common prefix and suffix functions, conversion
@@ -26,49 +25,7 @@ to OS-safe paths and to POSIX paths.
 # Build OS-portable and safer paths
 
 
-def safe_path(path, posix=False, preserve_spaces=False, posix_only=False):
-    """
-    Convert `path` to a safe and portable POSIX path usable on multiple OSes.
-    The returned path is an ASCII-only byte string, resolved for relative
-    segments and itself relative.
-
-    The `path` is treated as a POSIX path if `posix` is True or as a Windows
-    path with blackslash separators otherwise.
-
-    If `preserve_spaces` is True, then the spaces in `path` will not be replaced.
-    """
-    # if the path is UTF, try to use unicode instead
-    if not isinstance(path, str):
-        path = as_unicode(path)
-
-    path = path.strip()
-
-    if not is_posixpath(path):
-        path = as_winpath(path)
-        posix = False
-
-    path = resolve(path, posix)
-
-    _pathmod, path_sep = path_handlers(path, posix)
-
-    segments = [s.strip() for s in path.split(path_sep) if s.strip()]
-    segments = [
-        portable_filename(
-            s,
-            preserve_spaces=preserve_spaces,
-            posix_only=posix_only
-        ) for s in segments
-    ]
-
-    if not segments:
-        return '_'
-
-    # always return posix
-    path = '/'.join(segments)
-    return as_posixpath(path)
-
-
-def path_handlers(path, posix=True):
+def path_handlers(path: Path, posix: bool = True) -> tuple[Any, str]:
     """
     Return a path module and path separator to use for handling (e.g. split and
     join) `path` using either POSIX or Windows conventions depending on the
@@ -78,11 +35,11 @@ def path_handlers(path, posix=True):
     is_posix = is_posixpath(path)
     use_posix = posix or is_posix
     pathmod = use_posix and posixpath or ntpath
-    path_sep = '/' if use_posix else '\\'
+    path_sep = "/" if use_posix else "\\"
     return pathmod, path_sep
 
 
-def resolve(path, posix=True):
+def resolve(path: Path | None = None, posix: bool = True) -> str:
     """
     Return a resolved relative POSIX path from `path` where extra slashes
     including leading and trailing slashes are removed, dot '.' and dotdot '..'
@@ -94,59 +51,45 @@ def resolve(path, posix=True):
     Windows path with blackslash separators otherwise.
     """
     if not path:
-        return '.'
-
-    path = path.strip()
-    if not path:
-        return '.'
+        return "."
 
     if not is_posixpath(path):
-        path = as_winpath(path)
         posix = False
 
     pathmod, path_sep = path_handlers(path, posix)
 
-    path = path.strip(path_sep)
-    segments = [s.strip() for s in path.split(path_sep) if s.strip()]
+    segments = [s.strip() for s in path.as_posix().split(path_sep) if s.strip()]
 
     # remove empty (// or ///) or blank (space only) or single dot segments
-    segments = [s for s in segments if s and s != '.']
+    segments = [s for s in segments if s and s != "."]
 
-    path = path_sep.join(segments)
+    path_res = path_sep.join(segments)
 
-    # resolves . dot, .. dotdot
-    path = pathmod.normpath(path)
-
-    segments = path.split(path_sep)
+    segments = path_res.split(path_sep)
 
     # remove empty or blank segments
     segments = [s.strip() for s in segments if s and s.strip()]
 
     # is this a windows absolute path? if yes strip the colon to make this relative
-    if segments and len(segments[0]) == 2 and segments[0].endswith(':'):
+    if segments and len(segments[0]) == 2 and segments[0].endswith(":"):
         segments[0] = segments[0][:-1]
 
     # replace any remaining (usually leading) .. segment with a literal "dotdot"
-    dotdot = 'dotdot'
-    dd = '..'
+    dotdot = "dotdot"
+    dd = ".."
     segments = [dotdot if s == dd else s for s in segments if s]
-    if segments:
-        path = path_sep.join(segments)
-    else:
-        path = '.'
+    path_res = path_sep.join(segments) if segments else "."
 
-    path = as_posixpath(path)
-
-    return path
+    return Path(path).as_posix()
 
 
-legal_punctuation = r'!\#$%&\(\)\+,\-\.;\=@\[\]_\{\}\~'
-legal_spaces = r' '
-legal_alphanumeric = r'A-Za-z0-9'
+legal_punctuation = r"!\#$%&\(\)\+,\-\.;\=@\[\]_\{\}\~"
+legal_spaces = r" "
+legal_alphanumeric = r"A-Za-z0-9"
 legal_chars = legal_alphanumeric + legal_punctuation
 legal_chars_inc_spaces = legal_chars + legal_spaces
-illegal_chars_re = r'[^' + legal_chars + r']'
-illegal_chars_exc_spaces_re = r'[^' + legal_chars_inc_spaces + r']'
+illegal_chars_re = r"[^" + legal_chars + r"]"
+illegal_chars_exc_spaces_re = r"[^" + legal_chars_inc_spaces + r"]"
 replace_illegal_chars = re.compile(illegal_chars_re).sub
 replace_illegal_chars_exc_spaces = re.compile(illegal_chars_exc_spaces_re).sub
 
@@ -154,20 +97,39 @@ replace_illegal_chars_exc_spaces = re.compile(illegal_chars_exc_spaces_re).sub
 posix_legal_punctuation = r'<:"/>\|\*\^\\\'`\?' + legal_punctuation
 posix_legal_chars = legal_alphanumeric + posix_legal_punctuation
 posix_legal_chars_inc_spaces = posix_legal_chars + legal_spaces
-posix_illegal_chars_re = r'[^' + posix_legal_chars + r']'
-posix_illegal_chars_exc_spaces_re = r'[^' + posix_legal_chars_inc_spaces + r']'
+posix_illegal_chars_re = r"[^" + posix_legal_chars + r"]"
+posix_illegal_chars_exc_spaces_re = r"[^" + posix_legal_chars_inc_spaces + r"]"
 replace_illegal_posix_chars = re.compile(posix_illegal_chars_re).sub
 replace_illegal_posix_chars_exc_spaces = re.compile(posix_illegal_chars_exc_spaces_re).sub
 
 
-ILLEGAL_WINDOWS_NAMES = set([
-    'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
-    'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9',
-    'aux', 'con', 'nul', 'prn'
-])
+ILLEGAL_WINDOWS_NAMES = {
+    "com1",
+    "com2",
+    "com3",
+    "com4",
+    "com5",
+    "com6",
+    "com7",
+    "com8",
+    "com9",
+    "lpt1",
+    "lpt2",
+    "lpt3",
+    "lpt4",
+    "lpt5",
+    "lpt6",
+    "lpt7",
+    "lpt8",
+    "lpt9",
+    "aux",
+    "con",
+    "nul",
+    "prn",
+}
 
 
-def portable_filename(filename, preserve_spaces=False, posix_only=False):
+def portable_filename(filename: str, preserve_spaces: bool = False, posix_only: bool = False) -> str:
     """
     Return a new name for `filename` that is portable across operating systems.
 
@@ -191,32 +153,32 @@ def portable_filename(filename, preserve_spaces=False, posix_only=False):
     filename = toascii(filename, translit=True)
 
     if not filename:
-        return '_'
+        return "_"
 
     if posix_only:
         if preserve_spaces:
-            filename = replace_illegal_posix_chars_exc_spaces('_', filename)
+            filename = replace_illegal_posix_chars_exc_spaces("_", filename)
         else:
-            filename = replace_illegal_posix_chars('_', filename)
+            filename = replace_illegal_posix_chars("_", filename)
     else:
         if preserve_spaces:
-            filename = replace_illegal_chars_exc_spaces('_', filename)
+            filename = replace_illegal_chars_exc_spaces("_", filename)
         else:
-            filename = replace_illegal_chars('_', filename)
+            filename = replace_illegal_chars("_", filename)
 
     if not posix_only:
-        basename, dot, extension = filename.partition('.')
+        basename, dot, extension = filename.partition(".")
         if basename.lower() in ILLEGAL_WINDOWS_NAMES:
-            filename = ''.join([basename, '_', dot, extension])
+            filename = "".join([basename, "_", dot, extension])
 
     # no name made only of dots.
-    if set(filename) == set(['.']):
-        filename = 'dot' * len(filename)
+    if set(filename) == {"."}:
+        filename = "dot" * len(filename)
 
     # replaced any leading dotdot
-    if filename != '..' and filename.startswith('..'):
-        while filename.startswith('..'):
-            filename = filename.replace('..', '__', 1)
+    if filename != ".." and filename.startswith(".."):
+        while filename.startswith(".."):
+            filename = filename.replace("..", "__", 1)
 
     return filename
 
@@ -226,20 +188,20 @@ def portable_filename(filename, preserve_spaces=False, posix_only=False):
 #
 
 
-def common_prefix(s1, s2):
+def common_prefix(s1: str | None = None, s2: str | None = None) -> tuple[str | None, Any]:
     """
     Return the common leading subsequence of two sequences and its length.
     """
     if not s1 or not s2:
         return None, 0
-    common = commonprefix((s1, s2,))
+    common = commonprefix((s1, s2))
     if common:
         return common, len(common)
     else:
         return None, 0
 
 
-def common_suffix(s1, s2):
+def common_suffix(s1: str | None = None, s2: str | None = None) -> tuple[str | None, Any]:
     """
     Return the common trailing subsequence between two sequences and its length.
     """
@@ -252,7 +214,7 @@ def common_suffix(s1, s2):
     return common, lgth
 
 
-def common_path_prefix(p1, p2):
+def common_path_prefix(p1: Path, p2: Path) -> tuple[str | None, Any]:
     """
     Return the common leading path between two posix paths and the number of
     matched path segments.
@@ -260,7 +222,7 @@ def common_path_prefix(p1, p2):
     return _common_path(p1, p2, common_func=common_prefix)
 
 
-def common_path_suffix(p1, p2):
+def common_path_suffix(p1: Path, p2: Path) -> tuple[str | None, Any]:
     """
     Return the common trailing path between two posix paths and the number of
     matched path segments.
@@ -268,23 +230,21 @@ def common_path_suffix(p1, p2):
     return _common_path(p1, p2, common_func=common_suffix)
 
 
-def split(p):
+def split(path: Path) -> list[str]:
     """
     Split a posix path in a sequence of segments, ignoring leading and trailing
     slash. Return an empty sequence for an empty path and the root path /.
     """
-    if not p:
-        return []
-    p = p.strip('/').split('/')
-    return [] if p == [''] else p
+    p = path.as_posix().split("/")
+    return [] if p == [""] else p
 
 
-def _common_path(p1, p2, common_func):
+def _common_path(p1: Path, p2: Path, common_func: Any) -> tuple[str | None, Any]:
     """
     Return a common leading or trailing path brtween paths `p1` and `p2` and the
     common length in number of segments using the `common_func` path comparison
     function.
     """
     common, lgth = common_func(split(p1), split(p2))
-    common = '/'.join(common) if common else None
+    common = "/".join(common) if common else None
     return common, lgth

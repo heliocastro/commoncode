@@ -1,9 +1,9 @@
-
 # Copyright (c) 2003-2012 Raymond Hettinger
 # SPDX-License-Identifier: Python-2.0
+from __future__ import annotations
 
 
-def sparsify(d):
+def sparsify(d: dict[str, str]) -> dict[str, str]:
     """
     http://code.activestate.com/recipes/198157-improve-dictionary-lookup-performance/
     Created by Raymond Hettinger on Sun, 4 May 2003

@@ -5,12 +5,12 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
-from datetime import datetime
-from datetime import tzinfo
-from functools import update_wrapper
-from functools import wraps
+from datetime import datetime, tzinfo
+from functools import update_wrapper, wraps
 from time import time
+from typing import Any
 
 """
 Time is of the essence: path safe time stamps creation and conversion to
@@ -21,17 +21,17 @@ datetime objects.
 class UTC(tzinfo):
     """UTC timezone"""
 
-    def utcoffset(self, dt):  # NOQA
+    def utcoffset(self, dt: datetime | None) -> None:
         return None
 
-    def tzname(self, dt):  # NOQA
-        return 'UTC'
+    def tzname(self, dt: datetime | None) -> str:
+        return "UTC"
 
-    def dst(self, dt):  # NOQA
+    def dst(self, dt: datetime | None) -> None:
         return None
 
 
-def time2tstamp(dt=None, path_safe=True):
+def time2tstamp(dt: datetime | None | None = None, path_safe: bool = True) -> str:
     """
     Return a timestamp representing the datetime object (assumed to be in UTC
     time) or the current UTC time (if dt == None) formatted using the ISO 8601
@@ -61,38 +61,37 @@ def time2tstamp(dt=None, path_safe=True):
     datim = dt or datetime.utcnow()
     iso = datim.isoformat()
     if path_safe:
-        iso = iso.replace(':', '').replace('/', '_')
+        iso = iso.replace(":", "").replace("/", "_")
     return iso
 
 
-def tstamp2time(stamp):
+def tstamp2time(stamp: str) -> datetime:
     """
     Convert a UTC timestamp to a datetime object.
     """
     # handle both basic and extended formats
-    tformat = '%Y-%m-%dT%H%M%S' if stamp[4] == '-' else '%Y%m%dT%H%M%S'
+    tformat = "%Y-%m-%dT%H%M%S" if stamp[4] == "-" else "%Y%m%dT%H%M%S"
     # normalize
-    dt_ms = stamp.strip().replace('Z', '').replace(':', '')
-
-    dt_ms = dt_ms.split('.')
+    dt_ms = stamp.strip().replace("Z", "").replace(":", "").split(".")
     isodatim = dt_ms[0]
     datim = datetime.strptime(isodatim, tformat)
     # all stamps must be UTC
     datim = datim.replace(tzinfo=UTC())
 
     # deal with optional microsec
+    microsec: str | None
     try:
         microsec = dt_ms[1]
-    except:
+    except Exception:
         microsec = None
     if microsec:
-        microsec = int(microsec)
-        if 0 <= microsec <= 999999:
-            datim = datim.replace(microsecond=microsec)
+        int_microsec = int(microsec)
+        if 0 <= int_microsec <= 999999:
+            datim = datim.replace(microsecond=int_microsec)
     return datim
 
 
-def timed(fun):
+def timed(fun: Any) -> Any:
     """
     Decorate `fun` callable to return a tuple of (timing, result) where timing
     is a function execution time in seconds as a float and result is the value
@@ -103,9 +102,9 @@ def timed(fun):
     """
 
     @wraps(fun)
-    def _timed(*args, **kwargs):
+    def _timed(*args: Any, **kwargs: Any) -> tuple[float, Any]:
         start = time()
-        result = fun(*args, **kwargs)
+        result: Any = fun(*args, **kwargs)
         return time() - start, result
 
     return update_wrapper(_timed, fun)

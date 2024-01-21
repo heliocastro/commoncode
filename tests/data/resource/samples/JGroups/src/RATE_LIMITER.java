@@ -92,7 +92,7 @@ public class RATE_LIMITER extends Protocol {
 
         return down_prot.down(evt);
     }
-    
+
 
     public void init() throws Exception {
         super.init();

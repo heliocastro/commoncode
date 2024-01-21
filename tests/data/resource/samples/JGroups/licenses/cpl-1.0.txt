@@ -94,13 +94,13 @@ own license agreement, provided that:
 
     iv) states that source code for the Program is available from such Contributor,
     and informs licensees how to obtain it in a reasonable manner on or through
-    a medium customarily used for software exchange. 
+    a medium customarily used for software exchange.
 
 When the Program is made available in source code form:
 
     a) it must be made available under this Agreement; and
 
-    b) a copy of this Agreement must be included with each copy of the Program. 
+    b) a copy of this Agreement must be included with each copy of the Program.
 
 Contributors may not remove or alter any copyright notices contained within the Program.
 
@@ -124,7 +124,7 @@ extent caused by the acts or omissions of such Commercial Contributor in
 connection with its distribution of the Program in a commercial product offering.
 The obligations in this section do not apply to any claims or Losses relating to
 any actual or alleged intellectual property infringement. In order to qualify,
-an Indemnified Contributor must: a) promptly notify the Commercial Contributor 
+an Indemnified Contributor must: a) promptly notify the Commercial Contributor
 n writing of such claim, and b) allow the Commercial Contributor to control,
 and cooperate with the Commercial Contributor in, the defense and any related
 settlement negotiations. The Indemnified Contributor may participate in any such
@@ -210,4 +210,3 @@ intellectual property laws of the United States of America. No party to this
 Agreement will bring a legal action under this Agreement more than one year after
 the cause of action arose. Each party waives its rights to a jury trial in any
 resulting litigation.
-

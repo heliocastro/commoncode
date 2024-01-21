@@ -5,14 +5,15 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 import functools
-
-from types import GeneratorType
 from array import array
+from types import GeneratorType
+from typing import Any
 
 
-def flatten(seq):
+def flatten(seq: list[int] | tuple[int]) -> list[int]:
     """
     Flatten recursively a sequence and all its sub-sequences that can be tuples,
     lists or generators (generators will be consumed): all are converted to a
@@ -34,11 +35,11 @@ def flatten(seq):
     This file is in the Public Domain
     Version: Id: util.py,v 1.22 2005/12/16 00:08:21 erwin Exp erwin
     """
-    r = []
+    r: list[int] = []
     generators = GeneratorType, range
 
     for x in seq:
-        if isinstance(x, (list, tuple)):
+        if isinstance(x, list | tuple):
             r.extend(flatten(x))
         elif isinstance(x, generators):
             r.extend(flatten(list(x)))
@@ -47,7 +48,7 @@ def flatten(seq):
     return r
 
 
-def memoize(fun):
+def memoize(fun: Any) -> Any:
     """
     Decorate `fun` function and cache return values. Arguments must be hashable.
     Only args are supported, kwargs are not handled. Used to speed up some often
@@ -79,16 +80,15 @@ def memoize(fun):
     The expensive function returned value will be cached based for each args
     values and computed only once in its life. Call with kwargs are not cached
     """
-    memos = {}
+    memos: dict[Any, Any] = {}
 
     @functools.wraps(fun)
-    def memoized(*args, **kwargs):
+    def memoized(*args: Any, **kwargs: Any) -> dict[Any, Any]:
         # calls with kwargs are not handled and not cached
         if kwargs:
             return fun(*args, **kwargs)
         # convert any list args to a tuple
-        args = tuple(tuple(arg) if isinstance(arg, (list, tuple, array)) else arg
-                     for arg in args)
+        args = tuple(tuple(arg) if isinstance(arg, list | tuple | array) else arg for arg in args)
         try:
             return memos[args]
         except KeyError:
@@ -98,7 +98,7 @@ def memoize(fun):
     return functools.update_wrapper(memoized, fun)
 
 
-def partial(func, *args, **kwargs):
+def partial(func: Any, *args: Any, **kwargs: Any) -> Any:
     """
     Return a partial function. Same as functools.partial but keeping the __doc__
     and __name__ of the warpper function.

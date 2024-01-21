@@ -1,43 +1,88 @@
 [build-system]
-requires = ["setuptools >= 50", "wheel", "setuptools_scm[toml] >= 6"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
-[tool.setuptools_scm]
-# this is used populated when creating a git archive
-# and when there is .git dir and/or there is no git installed
-fallback_version = "9999.dev99"
+[tool.poetry]
+name = "commoncode"
+version = "31.1.0"
+description = "Set of common utilities, originally split from ScanCode"
+authors = ["nexB. Inc. <info@aboutcode.org>", "others"]
+maintainers = ["nexB. Inc. <info@aboutcode.org>"]
+readme = "README.rst"
+license = "Apache-2.0"
+packages = [{ include = "commoncode", from = "src" }]
+keywords = ["utilities", "scancode-toolkit"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development",
+    "Topic :: Utilities",
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pyyaml = "^6.0.1"
+requests = "^2.31.0"
+attrs = "^23.2.0"
+click = "^8.1.7"
+urllib3 = "^2.1.0"
+text-unidecode = "^1.3"
+bs4 = "^0.0.2"
+saneyaml = "^0.6.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest-xdist = "^3.5.0"
+pytest = "^7.4.4"
+ruff = "^0.1.13"
+mypy = "^1.8.0"
+pre-commit = "^3.6.0"
+types-requests = "^2.31.0.20240106"
+conventional-pre-commit = "^3.1.0"
+types-pyyaml = "^6.0.12.12"
 
 [tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+pythonpath = "src"
+
 norecursedirs = [
-   ".git",
-   "bin",
-   "dist",
-   "build",
-   "_build",
-   "dist",
-   "etc",
-   "local",
-   "ci",
-   "docs",
-   "man",
-   "share",
-   "samples",
-   ".cache",
-   ".settings",
-   "Include",
-   "include",
-   "Lib",
-   "lib",
-   "lib64",
-   "Lib64",
-   "Scripts",
-   "thirdparty",
-   "tmp",
-   "venv",
-   "tests/data",
-   ".eggs",
-   "src/*/data",
-   "tests/*/data"
+    ".git",
+    "bin",
+    "dist",
+    "build",
+    "_build",
+    "dist",
+    "etc",
+    "local",
+    "ci",
+    "docs",
+    "man",
+    "share",
+    "samples",
+    ".cache",
+    ".settings",
+    "Include",
+    "include",
+    "Lib",
+    "lib",
+    "lib64",
+    "Lib64",
+    "Scripts",
+    "thirdparty",
+    "tmp",
+    "venv",
+    "tests/data",
+    ".eggs",
+    "src/*/data",
+    "tests/*/data",
 ]
 
 python_files = "*.py"
@@ -48,5 +93,135 @@ python_functions = "test"
 addopts = [
     "-rfExXw",
     "--strict-markers",
-    "--doctest-modules"
+    "--doctest-modules",
+    "--import-mode=importlib",
 ]
+
+[tool.pylint.messages_control]
+disable = [
+    "abstract-method",
+    "arguments-differ",
+    "attribute-defined-outside-init",
+    "blacklisted-name",
+    "chained-comparison",
+    "duplicate-code",
+    "eval-used",
+    "exec-used",
+    "expression-not-assigned",
+    "fixme",
+    "global-statement",
+    "invalid-name",
+    "import-error",
+    "logging-fstring-interpolation",
+    "missing-docstring",
+    "no-member",
+    "no-name-in-module",
+    "protected-access",
+    "redefined-argument-from-local",
+    "redefined-outer-name",
+    "reimported",
+    "stop-iteration-return",
+    "too-few-public-methods",
+    "too-many-ancestors",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-instance-attributes",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-return-statements",
+    "too-many-statements",
+    "unexpected-special-method-signature",
+    "unspecified-encoding",
+]
+
+[tool.mypy]
+#plugins = ["pydantic.mypy"]
+
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_untyped_defs = true
+disallow_untyped_calls = false
+follow_imports = "normal"
+ignore_missing_imports = true
+no_implicit_reexport = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.ruff.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[tool.ruff]
+fix = true
+line-length = 120
+ignore = [
+    'N802',   # function name should be lowercase
+    'SIM105', # Suggest contextlib instead of try/except with pass
+    'S101',   # Suggest if not instead of assert
+]
+extend-select = [
+    "E",   # pycodestyle error
+    "W",   # pycodestyle warning
+    "F",   # pyflakes
+    "A",   # flakes8-builtins
+    "COM", # flakes8-commas
+    "C4",  # flake8-comprehensions
+    "Q",   # flake8-quotes
+    "SIM", # flake8-simplify
+    "PTH", # flake8-use-pathlib
+    "I",   # isort
+    "N",   # pep8 naming
+    "UP",  # pyupgrade
+    "S",   # bandit
+]
+
+# Exclude a variety of commonly ignored directories.
+extend-exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "docs",
+    "tests",
+    "etc",
+]
+per-file-ignores = {}
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Assume Python 3.10.
+target-version = "py310"
+
+[tool.ruff.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+# use_parentheses = true
+# line_length = 120
+
+[tool.pyright]
+reportUnboundVariable = false
+reportGeneralTypeIssues = "none"

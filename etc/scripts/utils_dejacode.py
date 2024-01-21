@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #
 # Copyright (c) nexB Inc. and others. All rights reserved.
 # ScanCode is a trademark of nexB Inc.
@@ -8,13 +7,14 @@
 # See https://github.com/nexB/skeleton for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
+
 import io
 import os
 import zipfile
 
 import requests
 import saneyaml
-
 from packvers import version as packaging_version
 
 """
@@ -26,7 +26,7 @@ DEJACODE_API_URL = os.environ.get("DEJACODE_API_URL", "")
 
 DEJACODE_API_URL_PACKAGES = f"{DEJACODE_API_URL}packages/"
 DEJACODE_API_HEADERS = {
-    "Authorization": "Token {}".format(DEJACODE_API_KEY),
+    "Authorization": f"Token {DEJACODE_API_KEY}",
     "Accept": "application/json; indent=4",
 }
 

@@ -5,25 +5,26 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 
-def set_re_max_cache(max_cache=1000000):
+def set_re_max_cache(max_cache: float = 1000000) -> None:
     """
     Set re and fnmatch _MAXCACHE to 1Million items to cache compiled regex
     aggressively. Their default is a maximum of 100 items and many utilities and
     libraries use a lot of regexes: therefore 100 is not enough to benefit from
     caching.
     """
-    import re
     import fnmatch
+    import re
 
-    remax = getattr(re, '_MAXCACHE', 0)
+    remax = getattr(re, "_MAXCACHE", 0)
     if remax < max_cache:
-        setattr(re, '_MAXCACHE', max_cache)
+        setattr(re, "_MAXCACHE", max_cache)
 
-    fnmatchmax = getattr(fnmatch, '_MAXCACHE', 0)
+    fnmatchmax = getattr(fnmatch, "_MAXCACHE", 0)
     if fnmatchmax < max_cache:
-        setattr(fnmatch, '_MAXCACHE', max_cache)
+        setattr(fnmatch, "_MAXCACHE", max_cache)
 
 
 set_re_max_cache()

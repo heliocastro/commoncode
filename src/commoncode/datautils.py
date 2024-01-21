@@ -5,30 +5,41 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
+
+from typing import Any
 
 import attr
 from attr.validators import in_ as choices  # NOQA
-import typing
 
 """
 Utilities and helpers for data classes.
 """
 
-HELP_METADATA = '__field_help'
-LABEL_METADATA = '__field_label'
+HELP_METADATA: str = "__field_help"
+LABEL_METADATA: str = "__field_label"
 
 
-def attribute(default=attr.NOTHING, validator=None,
-              repr=False, eq=True, order=True,  # NOQA
-              init=True, type=None, converter=None,  # NOQA
-              help=None, label=None, metadata=None,):  # NOQA
+def attribute(
+    default: Any = attr.NOTHING,
+    validator: Any | None = None,
+    _repr: bool = False,
+    eq: bool = True,
+    order: bool = True,
+    init: bool = True,
+    _type: Any | None = None,
+    converter: Any | None = None,
+    _help: str | None = None,
+    label: str | None = None,
+    metadata: dict[Any, Any] | None = None,
+) -> attr.Attribute:  # NOQA
     """
     A generic attribute with help metadata and that is not included in the
     representation by default.
     """
-    metadata = metadata or dict()
-    if help:
-        metadata[HELP_METADATA] = help
+    metadata = metadata or {}
+    if _help:
+        metadata[HELP_METADATA] = _help
 
     if label:
         metadata[LABEL_METADATA] = label
@@ -36,75 +47,107 @@ def attribute(default=attr.NOTHING, validator=None,
     return attr.attrib(
         default=default,
         validator=validator,
-        repr=repr,
+        repr=_repr,
         eq=eq,
         order=order,
         init=init,
         metadata=metadata,
-        type=type,
-        converter=converter
+        type=_type,
+        converter=converter,
     )
 
 
-def Boolean(default=False, validator=None, repr=False, eq=True, order=True,  # NOQA
-            converter=None, label=None, help=None,):  # NOQA
+def Boolean(
+    default: bool = False,
+    validator: Any | None = None,
+    _repr: bool = False,
+    eq: bool = True,
+    order: bool = True,
+    converter: Any | None = None,
+    _help: str | None = None,
+    label: str | None = None,
+) -> attr.Attribute:
     """
     A boolean attribute.
     """
     return attribute(
         default=default,
         validator=validator,
-        repr=repr,
+        _repr=_repr,
         eq=eq,
         order=order,
         init=True,
-        type=bool,
+        _type=bool,
         converter=converter,
-        help=help,
+        _help=_help,
         label=label,
     )
 
 
-def TriBoolean(default=None, validator=None, repr=False, eq=True, order=True,  # NOQA
-            converter=None, label=None, help=None,):  # NOQA
+def TriBoolean(
+    default: bool = False,
+    validator: Any | None = None,
+    _repr: bool = False,
+    eq: bool = True,
+    order: bool = True,
+    converter: Any | None = None,
+    _help: str | None = None,
+    label: str | None = None,
+) -> attr.Attribute:
     """
     A tri-boolean attribute with possible values of None, True and False.
     """
     return attribute(
         default=default,
         validator=validator,
-        repr=repr,
+        _repr=_repr,
         eq=eq,
         order=order,
         init=True,
-        type=bool,
+        _type=bool,
         converter=converter,
-        help=help,
+        _help=_help,
         label=label,
     )
 
 
-def String(default=None, validator=None, repr=False, eq=True, order=True,  # NOQA
-           converter=None, label=None, help=None,):  # NOQA
+def String(
+    default: str | None = None,
+    validator: Any | None = None,
+    _repr: bool = False,
+    eq: bool = True,
+    order: bool = True,
+    converter: Any | None = None,
+    _help: str | None = None,
+    label: str | None = None,
+) -> attr.Attribute:
     """
     A string attribute.
     """
     return attribute(
         default=default,
         validator=validator,
-        repr=repr,
+        _repr=_repr,
         eq=eq,
         order=order,
         init=True,
-        type=str,
+        _type=str,
         converter=converter,
-        help=help,
+        _help=_help,
         label=label,
     )
 
 
-def Integer(default=0, validator=None, repr=False, eq=True, order=True,  # NOQA
-            converter=None, label=None, help=None,):  # NOQA
+def Integer(
+    default: int = 0,
+    validator: Any | None = None,
+    _repr: bool = False,
+    eq: bool = True,
+    order: bool = True,
+    converter: Any | None = None,
+    _help: str | None = None,
+    label: str | None = None,
+) -> attr.Attribute:
     """
     An integer attribute.
     """
@@ -112,62 +155,83 @@ def Integer(default=0, validator=None, repr=False, eq=True, order=True,  # NOQA
     return attribute(
         default=default,
         validator=validator,
-        repr=repr,
+        _repr=_repr,
         eq=eq,
         order=order,
         init=True,
-        type=int,
+        _type=int,
         converter=converter,
-        help=help,
+        _help=_help,
         label=label,
     )
 
 
-def Float(default=0.0, validator=None, repr=False, eq=True, order=True,  # NOQA
-          converter=None, label=None, help=None,):  # NOQA
+def Float(
+    default: float = 0.0,
+    validator: Any | None = None,
+    _repr: bool = False,
+    eq: bool = True,
+    order: bool = True,
+    converter: Any | None = None,
+    _help: str | None = None,
+    label: str | None = None,
+) -> attr.Attribute:
     """
     A float attribute.
     """
     return attribute(
         default=default,
         validator=validator,
-        repr=repr,
+        _repr=_repr,
         eq=eq,
         order=order,
         init=True,
-        type=float,
+        _type=float,
         converter=converter,
-        help=help,
+        _help=_help,
         label=label,
     )
 
 
-def List(item_type=typing.Any, default=attr.NOTHING, validator=None,
-         repr=False, eq=True, order=True,  # NOQA
-         converter=None, label=None, help=None,):  # NOQA
+def List(
+    item_type: Any = Any,
+    default: Any = attr.Factory(list),
+    validator: Any | None = None,
+    _repr: bool = False,
+    eq: bool = True,
+    order: bool = True,
+    converter: Any | None = None,
+    _help: str | None = None,
+    label: str | None = None,
+) -> attr.Attribute:
     """
     A list attribute: the optional item_type defines the type of items it stores.
     """
-    if default is attr.NOTHING:
-        default = attr.Factory(list)
-
     return attribute(
         default=default,
         validator=validator,
-        repr=repr,
+        _repr=_repr,
         eq=eq,
         order=order,
         init=True,
-        type=typing.List[item_type],
+        _type=list[item_type],
         converter=converter,
-        help=help,
+        _help=_help,
         label=label,
     )
 
 
-def Mapping(value_type=typing.Any, default=attr.NOTHING, validator=None,
-            repr=False, eq=True, order=True,  # NOQA
-            converter=None, help=None, label=None):  # NOQA
+def Mapping(
+    value_type: Any = Any,
+    default: Any = attr.Factory(dict),
+    validator: Any | None = None,
+    _repr: bool = False,
+    eq: bool = True,
+    order: bool = True,
+    converter: Any | None = None,
+    _help: str | None = None,
+    label: str | None = None,
+) -> attr.Attribute:
     """
     A mapping attribute: the optional value_type defines the type of values it
     stores. The key is always a string.
@@ -181,23 +245,32 @@ def Mapping(value_type=typing.Any, default=attr.NOTHING, validator=None,
     return attribute(
         default=default,
         validator=validator,
-        repr=repr,
+        _repr=_repr,
         eq=eq,
         order=order,
         init=True,
-        type=typing.Dict[str, value_type],
+        _type=dict[str, value_type],
         converter=converter,
-        help=help,
+        _help=_help,
         label=label,
     )
+
 
 ##################################################
 # FIXME: add proper support for dates!!!
 ##################################################
 
 
-def Date(default=None, validator=None, repr=False, eq=True, order=True,  # NOQA
-           converter=None, label=None, help=None,):  # NOQA
+def Date(
+    default: Any = None,
+    validator: Any | None = None,
+    _repr: bool = False,
+    eq: bool = True,
+    order: bool = True,
+    converter: Any | None = None,
+    _help: str | None = None,
+    label: str | None = None,
+) -> attr.Attribute:
     """
     A date attribute. It always serializes to an ISO date string.
     Behavior is TBD and for now this is exactly a string.
@@ -205,10 +278,10 @@ def Date(default=None, validator=None, repr=False, eq=True, order=True,  # NOQA
     return String(
         default=default,
         validator=validator,
-        repr=repr,
+        _repr=_repr,
         eq=eq,
         order=order,
         converter=converter,
-        help=help,
+        _help=_help,
         label=label,
     )

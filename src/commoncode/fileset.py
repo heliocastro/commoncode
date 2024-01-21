@@ -5,12 +5,10 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 import fnmatch
-import os
-
-from commoncode import fileutils
-from commoncode import paths
+from pathlib import Path
 
 TRACE = False
 if TRACE:
@@ -57,7 +55,7 @@ matches the character '?'.
 """
 
 
-def is_included(path, includes=None, excludes=None):
+def is_included(path: Path, includes: dict[str, str] | None = None, excludes: dict[str, str] | None = None) -> bool:
     """
     Return a True if `path` is included based on mapping of `includes` and
     `excludes` glob patterns. If the `path` is empty, return False.
@@ -69,7 +67,7 @@ def is_included(path, includes=None, excludes=None):
     The ordering of the includes and excludes items does not matter and if a map
     is empty, it is not used for matching.
     """
-    if not path or not path.strip():
+    if not path.exists():
         return False
 
     if not includes and not excludes:
@@ -83,111 +81,104 @@ def is_included(path, includes=None, excludes=None):
     if includes:
         included = get_matches(path, includes, all_matches=False)
         if TRACE:
-            logger.debug('in_fileset: path: %(path)r included:%(included)r' % locals())
+            logger.debug("in_fileset: path: {path!r} included:{included!r}".format(**locals()))
         if not included:
             return False
 
     if excludes:
         excluded = get_matches(path, excludes, all_matches=False)
         if TRACE:
-            logger.debug('in_fileset: path: %(path)r excluded:%(excluded)r .' % locals())
+            logger.debug("in_fileset: path: {path!r} excluded:{excluded!r} .".format(**locals()))
         if excluded:
             return False
 
     return True
 
 
-def get_matches(path, patterns, all_matches=False):
+def get_matches(path: Path, patterns: dict[str, str], all_matches: bool = False) -> str | list[str] | None:
     """
     Return a list of values (which are values from the matched `patterns`
     mappint of {pattern: value or message} if `path` is matched by any of the
     pattern from the `patterns` map or an empty list.
     If `all_matches` is False, stop and return on the first matched pattern.
     """
-    if not path or not patterns:
-        return False
+    if not path.exists():
+        return None
 
-    path = fileutils.as_posixpath(path).lower()
-    pathstripped = path.lstrip('/0')
-    if not pathstripped:
-        return False
-
-    segments = paths.split(pathstripped)
-
-    if TRACE:
-        logger.debug('_match: path: %(path)r patterns:%(patterns)r.' % locals())
+    # if TRACE:
+    #     logger.debug("_match: path: {path.as_posix()!r} patterns:{patterns!r}.".format(**locals()))
 
     matches = []
     if not isinstance(patterns, dict):
-        assert isinstance(patterns, (list, tuple)), 'Invalid patterns: {}'.format(patterns)
+        assert isinstance(patterns, list | tuple), f"Invalid patterns: {patterns}"
         patterns = {p: p for p in patterns}
 
     for pat, value in patterns.items():
         if not pat or not pat.strip():
             continue
 
-        value = value or ''
-        pat = pat.lstrip('/').lower()
-        is_plain = '/' not in pat
+        value = value or ""
+        pat = pat.lstrip("/").lower()
+        is_plain = "/" not in pat
 
-        if is_plain:
-            if any(fnmatch.fnmatchcase(s, pat) for s in segments):
-                matches.append(value)
-                if not all_matches:
-                    break
-        elif (fnmatch.fnmatchcase(path, pat) or fnmatch.fnmatchcase(pathstripped, pat)):
+        # if is_plain:
+        #     if any(fnmatch.fnmatchcase(s, pat) for s in segments):
+        #         matches.append(value)
+        #         if not all_matches:
+        #             break
+        if fnmatch.fnmatchcase(path.as_posix(), pat):
             matches.append(value)
             if not all_matches:
                 break
     if TRACE:
-        logger.debug('_match: matches: %(matches)r' % locals())
+        logger.debug("_match: matches: {matches!r}".format(**locals()))
 
     if not all_matches:
         if matches:
             return matches[0]
         else:
-            return False
+            return None
     return matches
 
 
-def load(location):
+def load(location: Path) -> list[str] | None:
     """
     Return a sequence of patterns from a file at location.
     """
-    if not location:
-        return tuple()
-    fn = os.path.abspath(os.path.normpath(os.path.expanduser(location)))
-    msg = ('File %(location)s does not exist or not a file.') % locals()
-    assert (os.path.exists(fn) and os.path.isfile(fn)), msg
-    mode = 'r'
-    with open(fn, mode) as f:
-        return [l.strip() for l in f if l and l.strip()]
+    if not location.exists():
+        return None
+
+    fn: Path = location.absolute()
+    msg = ("File {location} does not exist or not a file.").format(**locals())
+    assert fn.exists() and fn.is_file(), msg
+    with fn.open() as f:
+        return [line.strip() for line in f if line and line.strip()]
 
 
-def includes_excludes(patterns, message):
+def includes_excludes(patterns: list[str], message: str) -> tuple[dict[str, str], dict[str, str]]:
     """
     Return a dict of included patterns and a dict of excluded patterns from a
     sequence of `patterns` strings and a `message` setting the message as
     value in the returned mappings. Ignore pattern as comments if prefixed
     with #. Use an empty string is message is None.
     """
-    message = message or ''
-    BANG = '!'
-    POUND = '#'
-    included = {}
-    excluded = {}
+    message = message or ""
+    bang: str = "!"
+    pound: str = "#"
+    included: dict[str, str] = {}
+    excluded: dict[str, str] = {}
     if not patterns:
         return included, excluded
 
     for pat in patterns:
         pat = pat.strip()
-        if not pat or pat.startswith(POUND):
+        if not pat or pat.startswith(pound):
             continue
-        if pat.startswith(BANG):
-            cpat = pat.lstrip(BANG)
+        if pat.startswith(bang):
+            cpat = pat.lstrip(bang)
             if cpat:
                 excluded[cpat] = message
             continue
         else:
-            included.add[pat] = message
+            included[pat] = message
     return included, excluded

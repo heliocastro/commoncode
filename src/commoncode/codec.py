@@ -5,6 +5,7 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 from base64 import standard_b64decode as stddecode
 from base64 import urlsafe_b64encode as b64encode
@@ -13,11 +14,16 @@ from base64 import urlsafe_b64encode as b64encode
 Numbers to bytes or strings and URLs coder/decoders.
 """
 
-c2i = lambda c: c
-i2c = lambda i: bytes([i])
+
+def c2i(c: str) -> int:
+    return int(c)
 
 
-def num_to_bin(num):
+def i2c(i: int) -> bytes:
+    return bytes([i])
+
+
+def num_to_bin(num: int) -> bytes:
     """
     Convert a `num` integer or long to a binary string byte-ordered such that
     the least significant bytes are at the beginning of the string (aka. big
@@ -25,35 +31,35 @@ def num_to_bin(num):
     """
     # Zero is not encoded but returned as an empty value
     if num == 0:
-        return b'\x00'
+        return b"\x00"
 
-    return num.to_bytes((num.bit_length() + 7) // 8, 'big')
+    return num.to_bytes((num.bit_length() + 7) // 8, "big")
 
 
-def bin_to_num(binstr):
+def bin_to_num(binstr: bytes) -> int:
     """
     Convert a big endian byte-ordered binary string to an integer or long.
     """
-    return int.from_bytes(binstr, byteorder='big', signed=False)
+    return int.from_bytes(binstr, byteorder="big", signed=False)
 
 
-def urlsafe_b64encode(s):
+def urlsafe_b64encode(s: bytes) -> bytes:
     """
     Encode a binary string to a url safe base64 encoding.
     """
     return b64encode(s)
 
 
-def urlsafe_b64decode(b64):
+def urlsafe_b64decode(b64: bytes) -> bytes:
     """
     Decode a url safe base64-encoded string.
     Note that we use stddecode to work around a bug in the standard library.
     """
-    b = b64.replace(b'-', b'+').replace(b'_', b'/')
+    b = b64.replace(b"-", b"+").replace(b"_", b"/")
     return stddecode(b)
 
 
-def urlsafe_b64encode_int(num):
+def urlsafe_b64encode_int(num: int) -> bytes:
     """
     Encode a number (int or long) in url safe base64.
     """

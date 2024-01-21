@@ -64,9 +64,9 @@ Examples:
 
 The product object type syntax is the same as the component syntax.
 """
+from __future__ import annotations
 
-from urllib.parse import quote_plus
-from urllib.parse import unquote_plus
+from urllib.parse import quote_plus, unquote_plus
 
 
 class URNValidationError(Exception):
@@ -75,26 +75,26 @@ class URNValidationError(Exception):
 
 # Describes the URN schema for each object type
 URN_SCHEMAS = {
-    'license': {
-        'object': 'license',
-        'fields': ['key'],
+    "license": {
+        "object": "license",
+        "fields": ["key"],
     },
-    'owner': {
-        'object': 'owner',
-        'fields': ['name'],
+    "owner": {
+        "object": "owner",
+        "fields": ["name"],
     },
-    'component': {
-        'object': 'component',
-        'fields': ['name', 'version'],
+    "component": {
+        "object": "component",
+        "fields": ["name", "version"],
     },
-    'product': {
-        'object': 'product',
-        'fields': ['name', 'version'],
+    "product": {
+        "object": "product",
+        "fields": ["name", "version"],
     },
 }
 
 
-def encode(object_type, **fields):
+def encode(object_type: str, **fields: str) -> str:
     """
     Return an encoded URN based given an object_type string and a dictionary
     of the object-specific fields. All field values must be provided even if
@@ -107,38 +107,37 @@ def encode(object_type, **fields):
 
     # case is not significant for the object type
     object_type = object_type.strip().lower()
-    urn_prefix = 'urn:dje:{0}:'.format(quote_plus(object_type))
+    urn_prefix = f"urn:dje:{quote_plus(object_type)}:"
 
-    object_fields = URN_SCHEMAS[object_type]['fields']
+    object_fields = URN_SCHEMAS[object_type]["fields"]
     # leading and trailing white spaces are not significant
     # each URN part is encoded individually BEFORE assembling the URN
-    encoded_fields = [quote_plus(fields[f].strip()) for f in object_fields]
-    encoded_fields = ':'.join(encoded_fields)
+    encoded_fields = ":".join([quote_plus(fields[f].strip()) for f in object_fields])
     return urn_prefix + encoded_fields
 
 
-def decode(urn):
+def decode(urn: str) -> tuple[str, dict[str, str]]:
     """
     Decode a URN and return the object_type and a mapping of field/values.
     Raise URNValidationError on errors.
     """
-    segments = [unquote_plus(p) for p in urn.split(':')]
+    segments = [unquote_plus(p) for p in urn.split(":")]
 
-    if not segments[0] == ('urn'):
+    if not segments[0] == ("urn"):
         raise URNValidationError("Invalid URN prefix. Expected 'urn'.")
 
-    if not segments[1] == ('dje'):
+    if not segments[1] == ("dje"):
         raise URNValidationError("Invalid URN namespace. Expected 'dje'.")
 
     # object type is always lowercase
     object_type = segments[2].lower()
     if object_type not in URN_SCHEMAS:
-        raise URNValidationError('Unsupported URN object type.')
+        raise URNValidationError("Unsupported URN object type.")
 
     fields = segments[3:]
-    schema_fields = URN_SCHEMAS[object_type]['fields']
+    schema_fields = URN_SCHEMAS[object_type]["fields"]
     if len(schema_fields) != len(fields):
-        raise URNValidationError('Invalid number of fields in URN.')
+        raise URNValidationError("Invalid number of fields in URN.")
     decoded_fields = dict(zip(schema_fields, fields))
 
     return object_type, decoded_fields

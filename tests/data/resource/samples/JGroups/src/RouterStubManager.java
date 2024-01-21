@@ -45,9 +45,9 @@ public class RouterStubManager implements RouterStub.ConnectionListener {
 
     @GuardedBy("reconnectorLock")
     private final Map<InetSocketAddress, Future<?>> futures = new HashMap<InetSocketAddress, Future<?>>();
-    private final Lock reconnectorLock = new ReentrantLock();    
+    private final Lock reconnectorLock = new ReentrantLock();
     private final List<RouterStub> stubs;
-    
+
     private final Protocol owner;
     private final TimeScheduler timer;
     private final String channelName;
@@ -58,40 +58,40 @@ public class RouterStubManager implements RouterStub.ConnectionListener {
 
     public RouterStubManager(Protocol owner, String channelName, Address logicalAddress, long interval) {
         this.owner = owner;
-        this.stubs = new CopyOnWriteArrayList<RouterStub>();             
-        this.log = LogFactory.getLog(owner.getClass());     
+        this.stubs = new CopyOnWriteArrayList<RouterStub>();
+        this.log = LogFactory.getLog(owner.getClass());
         this.timer = owner.getTransport().getTimer();
         this.channelName = channelName;
         this.logicalAddress = logicalAddress;
         this.interval = interval;
     }
-    
+
     private RouterStubManager(Protocol p) {
        this(p,null,null,0L);
     }
-    
+
     public List<RouterStub> getStubs(){
         return stubs;
     }
-    
+
     public RouterStub createAndRegisterStub(String routerHost, int routerPort, InetAddress bindAddress) {
         RouterStub s = new RouterStub(routerHost,routerPort,bindAddress,this);
-        unregisterAndDestroyStub(s.getGossipRouterAddress());       
-        stubs.add(s);   
+        unregisterAndDestroyStub(s.getGossipRouterAddress());
+        stubs.add(s);
         return s;
     }
-    
-    public void registerStub(RouterStub s) {        
-        unregisterAndDestroyStub(s.getGossipRouterAddress());        
-        stubs.add(s);           
+
+    public void registerStub(RouterStub s) {
+        unregisterAndDestroyStub(s.getGossipRouterAddress());
+        stubs.add(s);
     }
-    
+
     public boolean unregisterStub(final RouterStub s) {
         return stubs.remove(s);
     }
-    
+
     public RouterStub unregisterStub(final InetSocketAddress address) {
-        if(address == null) 
+        if(address == null)
             throw new IllegalArgumentException("Cannot remove null address");
         for (RouterStub s : stubs) {
             if (s.getGossipRouterAddress().equals(address)) {
@@ -101,7 +101,7 @@ public class RouterStubManager implements RouterStub.ConnectionListener {
         }
         return null;
     }
-    
+
     public boolean unregisterAndDestroyStub(final InetSocketAddress address) {
         RouterStub unregisteredStub = unregisterStub(address);
         if(unregisteredStub !=null) {
@@ -110,20 +110,20 @@ public class RouterStubManager implements RouterStub.ConnectionListener {
         }
         return false;
     }
-    
+
     public void disconnectStubs() {
         for (RouterStub stub : stubs) {
             try {
-                stub.disconnect(channelName, logicalAddress);                
+                stub.disconnect(channelName, logicalAddress);
             } catch (Exception e) {
             }
-        }       
+        }
     }
-    
+
     public void destroyStubs() {
         for (RouterStub s : stubs) {
             stopReconnecting(s);
-            s.destroy();            
+            s.destroy();
         }
         stubs.clear();
     }
@@ -141,13 +141,13 @@ public class RouterStubManager implements RouterStub.ConnectionListener {
             final Runnable reconnector = new Runnable() {
                 public void run() {
                     try {
-                        if (log.isTraceEnabled()) log.trace("Reconnecting " + stub);                        
+                        if (log.isTraceEnabled()) log.trace("Reconnecting " + stub);
                         String logical_name = org.jgroups.util.UUID.get(logicalAddress);
                         PhysicalAddress physical_addr = (PhysicalAddress) owner.down(new Event(
                                         Event.GET_PHYSICAL_ADDRESS, logicalAddress));
                         List<PhysicalAddress> physical_addrs = Arrays.asList(physical_addr);
                         stub.connect(channelName, logicalAddress, logical_name, physical_addrs);
-                        if (log.isTraceEnabled()) log.trace("Reconnected " + stub);                        
+                        if (log.isTraceEnabled()) log.trace("Reconnected " + stub);
                     } catch (Throwable ex) {
                         if (log.isWarnEnabled())
                             log.warn("failed reconnecting stub to GR at "+ stub.getGossipRouterAddress() + ": " + ex);
@@ -174,9 +174,9 @@ public class RouterStubManager implements RouterStub.ConnectionListener {
             final Runnable pinger = new Runnable() {
                 public void run() {
                     try {
-                        if(log.isTraceEnabled()) log.trace("Pinging " + stub);                        
+                        if(log.isTraceEnabled()) log.trace("Pinging " + stub);
                         stub.checkConnection();
-                        if(log.isTraceEnabled()) log.trace("Pinged " + stub);                        
+                        if(log.isTraceEnabled()) log.trace("Pinged " + stub);
                     } catch (Throwable ex) {
                         if (log.isWarnEnabled())
                             log.warn("failed pinging stub, GR at " + stub.getGossipRouterAddress()+ ": " + ex);
@@ -189,7 +189,7 @@ public class RouterStubManager implements RouterStub.ConnectionListener {
             reconnectorLock.unlock();
         }
     }
-   
+
 
     public void connectionStatusChange(RouterStub stub, RouterStub.ConnectionStatus newState) {
         if (newState == RouterStub.ConnectionStatus.CONNECTION_BROKEN) {
@@ -206,7 +206,7 @@ public class RouterStubManager implements RouterStub.ConnectionListener {
             }
         }
     }
-    
+
     public static RouterStubManager emptyGossipClientStubManager(Protocol p) {
         return new RouterStubManager(p);
     }

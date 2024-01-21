@@ -5,45 +5,48 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 import re
 from collections import namedtuple
-from os import path
+from pathlib import Path
 
 
-def VERSION_PATTERNS_REGEX():
-    return [re.compile(x) for x in [
-        # Eclipse features
-        r'v\d+\.feature\_(\d+\.){1,3}\d+',
+def VERSION_PATTERNS_REGEX() -> list[re.Pattern[str]]:
+    return [
+        re.compile(x)
+        for x in [
+            # Eclipse features
+            r"v\d+\.feature\_(\d+\.){1,3}\d+",
+            # Common version patterns
+            r"(M?(v\d+(\-|\_))?\d+\.){1,3}\d+[A-Za-z0-9]*((\.|\-|_|~)"
+            r"(b|B|rc|r|v|RC|alpha|beta|BETA|M|m|pre|vm|G)?\d+((\-|\.)\d+)?)?"
+            r"((\.|\-)(((alpha|dev|beta|rc|FINAL|final|pre)(\-|\_)\d+[A-Za-z]?"
+            r"(\-RELEASE)?)|alpha|dev(\.\d+\.\d+)?"
+            r"|beta|BETA|final|FINAL|release|fixed|(cr\d(\_\d*)?)))?",
+            #
+            r"[A-Za-z]?(\d+\_){1,3}\d+\_?[A-Za-z]{0,2}\d+",
+            #
+            r"(b|rc|r|v|RC|alpha|beta|BETA|M|m|pre|revision-)\d+(\-\d+)?",
+            #
+            r"current|previous|latest|alpha|beta",
+            #
+            r"\d{4}-\d{2}-\d{2}",
+            #
+            r"(\d(\-|\_)){1,2}\d",
+            #
+            r"\d{5,14}",
+        ]
+    ]
 
-        # Common version patterns
-        r'(M?(v\d+(\-|\_))?\d+\.){1,3}\d+[A-Za-z0-9]*((\.|\-|_|~)'
-            r'(b|B|rc|r|v|RC|alpha|beta|BETA|M|m|pre|vm|G)?\d+((\-|\.)\d+)?)?'
-            r'((\.|\-)(((alpha|dev|beta|rc|FINAL|final|pre)(\-|\_)\d+[A-Za-z]?'
-            r'(\-RELEASE)?)|alpha|dev(\.\d+\.\d+)?'
-            r'|beta|BETA|final|FINAL|release|fixed|(cr\d(\_\d*)?)))?',
-        #
-        r'[A-Za-z]?(\d+\_){1,3}\d+\_?[A-Za-z]{0,2}\d+',
-        #
-        r'(b|rc|r|v|RC|alpha|beta|BETA|M|m|pre|revision-)\d+(\-\d+)?',
-        #
-        r'current|previous|latest|alpha|beta',
-        #
-        r'\d{4}-\d{2}-\d{2}',
-        #
-        r'(\d(\-|\_)){1,2}\d',
-        #
-        r'\d{5,14}',
-    ]]
 
-
-def hint(path):
+def hint(path: str) -> str | None:
     """
     Return a version found in a ``path`` or None. Prefix the version with 'v ' if
     the version does not start with v.
     """
     for pattern in VERSION_PATTERNS_REGEX():
-        segments = path.split('/')
+        segments = path.split("/")
         # skip the first path segment unless there's only one segment
         first_segment = 1 if len(segments) > 1 else 0
         interesting_segments = segments[first_segment:]
@@ -53,12 +56,13 @@ def hint(path):
             if version:
                 v = version.group(0)
                 # prefix with v space
-                if not v.lower().startswith('v'):
-                    v = f'v {v}'
+                if not v.lower().startswith("v"):
+                    v = f"v {v}"
                 return v
+    return None
 
 
-def is_dot_num(s):
+def is_dot_num(s: str) -> bool:
     """
     Return True if a version string `s` is semver-like and composed only of dots
     and numbers.
@@ -80,7 +84,7 @@ common_version_suffixes = (
 common_dash_version_suffixes = tuple(f"-{s}" for s in common_version_suffixes)
 
 
-def is_moslty_num(s):
+def is_moslty_num(s: str) -> bool:
     """
     Return True if a version string `s` is primarily composed only of dots and
     numbers, with a minority of letters.
@@ -117,10 +121,10 @@ def is_moslty_num(s):
     return False
 
 
-NameVersion = namedtuple('NameVersion', 'name, version')
+NameVersion = namedtuple("NameVersion", "name, version")
 
 
-def get_jar_nv(filename):
+def get_jar_nv(filename: Path) -> None | NameVersion:
     """
     Return a NameVersion tuple parsed from the JAR `filename` or None.
 
@@ -183,21 +187,17 @@ def get_jar_nv(filename):
         >>> get_jar_nv('guava-30.1.1-android.foo')
 
     """
-    if not filename.endswith(".jar"):
-        return
+    if filename.suffix != ".jar":
+        return None
 
-    basename, _extension = path.splitext(filename)
+    basename = filename.stem
 
     # JAR name/version come in many flavors
     # amazon-sqs-java-messaging-lib-1.0.8.jar  is a plain name-ver
     if "_" in basename:
         # org.eclipse.persistence.antlr_3.2.0.v201302191141.jar
         name, _, version = basename.rpartition("_")
-        if (
-            is_dot_num(version)
-            or is_moslty_num(version)
-            or version.lower().endswith(common_version_suffixes)
-        ):
+        if is_dot_num(version) or is_moslty_num(version) or version.lower().endswith(common_version_suffixes):
             return NameVersion(name, version)
 
     if "-" in basename:
@@ -211,18 +211,14 @@ def get_jar_nv(filename):
                 break
 
         name, _, version = dashname.rpartition("-")
-        if (
-            is_dot_num(version)
-            or is_moslty_num(version)
-            or version.lower().endswith(common_version_suffixes)
-        ):
+        if is_dot_num(version) or is_moslty_num(version) or version.lower().endswith(common_version_suffixes):
             return NameVersion(name, f"{version}{suffix}")
 
     # no dash, no underscore means no version: org.eclipse.persistence.antlr.jar
     return NameVersion(basename, None)
 
 
-def get_nupkg_nv(filename):
+def get_nupkg_nv(filename: Path) -> None | NameVersion:
     """
     Return a NameVersion tuple parsed from the .nupkg NuGet archive `filename`.
 
@@ -242,10 +238,10 @@ def get_nupkg_nv(filename):
 
         >>> get_nupkg_nv('guava.30.1.1.foo')
     """
-    if not filename.endswith(".nupkg"):
-        return
+    if filename.suffix != ".nupkg":
+        return None
 
-    basename, _extension = path.splitext(filename)
+    basename = filename.stem
 
     # Either the last 3 or 4 segments are all digits in which case this is the
     # version. Otherwise we consider as version anything after the first all

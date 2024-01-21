@@ -5,54 +5,31 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 import os
+import stat
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-from commoncode.system import on_posix
 from commoncode.functional import memoize
+from commoncode.system import on_posix
 
 """
 Low level file type utilities, essentially a wrapper around os.path and stat.
 """
 
 
-def is_link(location):
-    """
-    Return True if `location` is a symbolic link.
-    """
-    return location and os.path.islink(location)
-
-
-def is_file(location, follow_symlinks=False):
-    """
-    Return True if `location` is a file.
-    """
-    _is_file = location and os.path.isfile(location)
-    if follow_symlinks:
-        return _is_file
-    return _is_file and not is_link(location) and not is_broken_link(location)
-
-
-def is_dir(location, follow_symlinks=False):
-    """
-    Return True if `location` is a directory.
-    """
-    _is_dir = location and os.path.isdir(location) and not is_file(location)
-    if follow_symlinks:
-        return _is_dir
-    return _is_dir and not is_link(location) and not is_broken_link(location)
-
-
-def is_regular(location):
+def is_regular(location: Path) -> bool:
     """
     Return True if `location` is regular. A regular location is a file or a
     dir and not a special file or symlink.
     """
-    return location and (is_file(location) or is_dir(location))
+    return location.exists() and (location.is_file() or location.is_dir())
 
 
-def is_special(location):
+def is_special(location: Path) -> bool:
     """
     Return True if `location` is a special file . A special file is not a
     regular file, i.e. anything such as a broken link, block file, fifo,
@@ -61,94 +38,83 @@ def is_special(location):
     return not is_regular(location)
 
 
-def is_broken_link(location):
-    """
-    Return True if `location` is a broken link.
-    """
-    # always false on windows, until Python supports junctions/links
-    if on_posix and is_link(location):
-        target = get_link_target(location)
-        target_loc = os.path.join(os.path.dirname(location), target)
-        return target and not os.path.exists(target_loc)
-
-
-def get_link_target(location):
+def get_link_target(location: Path) -> Path | None:
     """
     Return the link target for `location` if this is a Link or an empty
     string.
     """
-    target = ''
+    target: Path | None = None
     # always false on windows, until Python supports junctions/links
-    if on_posix and is_link(location):
+    if on_posix and location.is_symlink():
         try:
             # return false on OSes not supporting links
-            target = os.readlink(location)
+            target = location.readlink()
         except UnicodeEncodeError:
             # location is unicode but readlink can fail in some cases
             pass
     return target
 
 
-# Map of type checker function -> short type code
-# The order of types check matters: link -> file -> directory -> special
-TYPES = dict([
-    (is_link, ('l', 'link',)),
-    (is_file, ('f', 'file',)),
-    (is_dir, ('d', 'directory',)),
-    (is_special, ('s', 'special',))
-])
-
-
-def get_type(location, short=True):
+def get_type(location: Path, short: bool = True) -> str | None:
     """
     Return the type of the `location` or None if it does not exist.
     Return the short form (single character) or long form if short=False
     """
-    if location:
-        for type_checker in TYPES:
-            tc = type_checker(location)
-            if tc:
-                short_form, long_form = TYPES[type_checker]
-                return short and short_form or long_form
+    if location.exists():
+        mode = location.stat().st_mode
+        if location.is_symlink():
+            return short and "l" or "link"
+        elif location.is_file():
+            return short and "f" or "file"
+        elif location.is_dir():
+            return short and "d" or "directory"
+        elif stat.S_ISFIFO(mode) or stat.S_ISCHR(mode) or stat.S_ISBLK(mode) or stat.S_ISSOCK(mode):
+            return short and "s" or "special"
+
+    return None
 
 
-def is_readable(location):
+def is_readable(location: Path) -> int | None:
     """
     Return True if the file at location has readable permission set.
     Does not follow links.
     """
-    if location:
-        if is_dir(location):
-            return os.access(location, os.R_OK | os.X_OK)
-        else:
-            return os.access(location, os.R_OK)
+    if location.exists():
+        mode = location.stat().st_mode
+        return (location.is_dir() and mode & os.R_OK and mode & os.X_OK) or (location.is_file() and mode & os.R_OK)
+
+    return None
 
 
-def is_writable(location):
+def is_writable(location: Path) -> bool:
     """
     Return True if the file at location has writeable permission set.
     Does not follow links.
     """
-    if location:
-        if is_dir(location):
+    if location.exists():
+        if location.is_dir():
             return os.access(location, os.R_OK | os.W_OK | os.X_OK)
         else:
             return os.access(location, os.R_OK | os.W_OK)
 
+    return False
 
-def is_executable(location):
+
+def is_executable(location: Path) -> bool:
     """
     Return True if the file at location has executable permission set.
     Does not follow links.
     """
-    if location:
-        if is_dir(location):
+    if location.exists():
+        if location.is_dir():
             return os.access(location, os.R_OK | os.W_OK | os.X_OK)
         else:
             return os.access(location, os.X_OK)
 
+    return False
 
-def is_rwx(location):
+
+def is_rwx(location: Path) -> int | None:
     """
     Return True if the file at location has read, write and executable
     permission set. Does not follow links.
@@ -156,28 +122,28 @@ def is_rwx(location):
     return is_readable(location) and is_writable(location) and is_executable(location)
 
 
-def get_last_modified_date(location):
+def get_last_modified_date(location: Path) -> str:
     """
     Return the last modified date stamp of a file as YYYYMMDD format. The date
     of non-files (dir, links, special) is always an empty string.
     """
-    yyyymmdd = ''
-    if is_file(location):
+    yyyymmdd = ""
+    if location.is_file():
         utc_date = datetime.isoformat(
-            datetime.utcfromtimestamp(os.path.getmtime(location))
+            datetime.utcfromtimestamp(location.stat().st_mtime),
         )
         yyyymmdd = utc_date[:10]
     return yyyymmdd
 
 
 counting_functions = {
-    'file_count': lambda _: 1,
-    'file_size': os.path.getsize,
+    "file_count": lambda _: 1,
+    "file_size": os.path.getsize,
 }
 
 
 @memoize
-def counter(location, counting_function):
+def counter(location: Path, counting_function: str) -> int:
     """
     Return a count for a single file or a cumulative count for a directory
     tree at `location`.
@@ -194,32 +160,34 @@ def counter(location, counting_function):
     Any other file type such as a special file or link has a zero size. Does
     not follow links.
     """
-    if not (is_file(location) or is_dir(location)):
+    if not location.exists():
         return 0
 
-    count = 0
-    if is_file(location):
+    if not location.is_file() or location.is_dir():
+        return 0
+
+    count: int = 0
+    if location.is_file():
         count_fun = counting_functions[counting_function]
         return count_fun(location)
-    elif is_dir(location):
-        count += sum(counter(os.path.join(location, p), counting_function)
-                     for p in os.listdir(location))
+    elif location.is_dir():
+        count += sum(counter((location / p).as_posix(), counting_function) for p in location.iterdir())
     return count
 
 
-def get_file_count(location):
+def get_file_count(location: Path) -> int:
     """
     Return the cumulative number of files in the directory tree at `location`
     or 1 if `location` is a file. Only regular files are counted. Everything
     else has a zero size.
     """
-    return counter(location, 'file_count')
+    return counter(location, "file_count")
 
 
-def get_size(location):
+def get_size(location: Path) -> int:
     """
     Return the size in bytes of a file at `location` or if `location` is a
     directory, the cumulative size of all files in this directory tree. Only
     regular files have a size. Everything else has a zero size.
     """
-    return counter(location, 'file_size')
+    return counter(location, "file_size")

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # SPDX-License-Identifier: BSD-2-Clause-Views AND MIT
 # Copyright (c) 2010 David Wolever <david@wolever.net>. All rights reserved.
 # originally from https://github.com/wolever/pip2pi
+from __future__ import annotations
 
 import hashlib
 import os
@@ -69,7 +69,6 @@ def get_package_name_from_filename(filename):
             raise InvalidDistributionFilename(filename)
 
     elif filename.endswith(wheel_ext):
-
         wheel_info = get_wheel_from_filename(filename)
 
         if not wheel_info:
@@ -133,7 +132,7 @@ def build_links_package_index(packages_by_package_name, base_url):
     Return an HTML document as string which is a links index of all packages
     """
     document = []
-    header = f"""<!DOCTYPE html>
+    header = """<!DOCTYPE html>
 <html>
   <head>
     <title>Links for all packages</title>
@@ -204,14 +203,9 @@ def build_pypi_index(directory, base_url="https://thirdparty.aboutcode.org/pypi"
     ]
 
     for pkg_file in directory.iterdir():
-
         pkg_filename = pkg_file.name
 
-        if (
-            not pkg_file.is_file()
-            or not pkg_filename.endswith(dist_exts)
-            or pkg_filename.startswith(".")
-        ):
+        if not pkg_file.is_file() or not pkg_filename.endswith(dist_exts) or pkg_filename.startswith("."):
             continue
 
         pkg_name = get_package_name_from_filename(
@@ -233,7 +227,7 @@ def build_pypi_index(directory, base_url="https://thirdparty.aboutcode.org/pypi"
                 name=pkg_name,
                 index_dir=pkg_index_dir,
                 archive_file=pkg_file,
-            )
+            ),
         )
 
     # finalize main index

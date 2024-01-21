@@ -5,7 +5,11 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 unicode = str  # NOQA
 long = int  # NOQA
-integer_types = int, long,
+integer_types = (
+    int,
+    long,
+)

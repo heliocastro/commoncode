@@ -12,4 +12,3 @@ license_expression: mit
 notes: copied from pip-20.3.1 pip/_internal/models/wheel.py
  The models code has been heavily inspired from the ISC-licensed packaging-dists
  https://github.com/uranusjr/packaging-dists by Tzu-ping Chung
- 

@@ -5,24 +5,21 @@
 # See https://github.com/nexB/commoncode for support or download.
 # See https://aboutcode.org for more information about nexB OSS projects.
 #
+from __future__ import annotations
 
 from collections import Counter
 from unittest.case import TestCase
 
-from commoncode.functional import flatten
-from commoncode.functional import memoize
-from commoncode.functional import partial
+from commoncode.functional import flatten, memoize, partial
 
 
 class TestFunctional(TestCase):
-
     def test_flatten(self):
-        expected = [7, 6, 5, 4, 'a', 3, 3, 2, 1]
+        expected = [7, 6, 5, 4, "a", 3, 3, 2, 1]
         test = flatten([7, (6, [5, [4, ["a"], 3]], 3), 2, 1])
         assert test == expected
 
     def test_flatten_generator(self):
-
         def gen():
             for _ in range(2):
                 yield range(5)
@@ -32,17 +29,16 @@ class TestFunctional(TestCase):
         assert test == expected
 
     def test_flatten_empties(self):
-        expected = ['a']
-        test = flatten([[], (), ['a']])
+        expected = ["a"]
+        test = flatten([[], (), ["a"]])
         assert test == expected
 
     def test_partial(self):
-
         def test_func(a, b):
             pass
 
         wrapped = partial(test_func, a=2)
-        assert wrapped.__name__ == 'test_func'
+        assert wrapped.__name__ == "test_func"
 
     def test_memoized(self):
         call_count = Counter()
@@ -52,12 +48,12 @@ class TestFunctional(TestCase):
             call_count[a] += 1
 
         test_func(1)
-        assert 1 == call_count[1]
+        assert call_count[1] == 1
         test_func(1)
-        assert 1 == call_count[1]
+        assert call_count[1] == 1
         test_func(2)
-        assert 1 == call_count[2]
+        assert call_count[2] == 1
         test_func(2)
-        assert 1 == call_count[2]
+        assert call_count[2] == 1
         test_func(2)
-        assert 1 == call_count[1]
+        assert call_count[1] == 1
